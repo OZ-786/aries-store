@@ -65,6 +65,18 @@
   ],
   "audit": [
     {
+      "id": "d6a0dab7-663c-4dbf-ab27-b51a06407d46",
+      "at": "2026-11-16T19:56:19.960Z",
+      "username": "wali",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated their company email and phone."
+    },
+    {
       "id": "0641bc7c-01fd-4900-b74c-e2f9590ab5ca",
       "at": "2026-11-16T19:56:18.173Z",
       "username": "wali",
