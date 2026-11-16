@@ -9,6 +9,16 @@
       "createdAt": "2026-11-16T13:15:56.513Z",
       "email": "abdul@ariesng.com",
       "phone": "9065704348"
+    },
+    {
+      "id": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
+      "name": "Oluwaseun Agboola",
+      "username": "oluwaseu",
+      "email": "elijah@ariesng.com",
+      "phone": "",
+      "passwordHash": "fcc7b8041ef0ece8b83d3e14dd3d8ac1:c44768b77be6750e10e489c4bbff20418aa44b48635370b918a9e5a3272dc0d7",
+      "role": "staff",
+      "createdAt": "2026-11-16T20:32:43.550Z"
     }
   ],
   "items": [
@@ -64,6 +74,18 @@
     }
   ],
   "audit": [
+    {
+      "id": "8958462e-42c8-4f38-bb9a-82b21cba4cd5",
+      "at": "2026-11-16T20:32:43.550Z",
+      "username": "oluwaseu",
+      "userId": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
+      "userName": "Oluwaseun Agboola",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Oluwaseun Agboola (@oluwaseu) created an account as staff."
+    },
     {
       "id": "1c4f17d5-fb16-4208-ab59-add21113c622",
       "at": "2026-11-16T19:57:44.209Z",
