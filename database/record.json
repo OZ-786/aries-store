@@ -73,6 +73,18 @@
   ],
   "audit": [
     {
+      "id": "a7a52065-1b7f-44ea-9e43-e2e29f014b8a",
+      "at": "2026-11-16T19:46:59.480Z",
+      "username": "abdul",
+      "userId": "ef51dcee-33af-488f-9d41-f4ed865894e1",
+      "userName": "Abdul-Waliyi Ozemoya Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Ozemoya Muhammed requested a password reset. Mail is not configured, so an administrator needs to set the password."
+    },
+    {
       "id": "97886c9c-13d9-4717-bb03-aed85826405d",
       "at": "2026-11-16T19:45:37.403Z",
       "username": "abdul",
@@ -570,6 +582,17 @@
       "details": "Abdul-Waliyi Muhammed (@wali) created an account as admin."
     }
   ],
-  "resets": [],
+  "resets": [
+    {
+      "id": "ae6fa32e-dcb7-4bec-9b56-9193007a3dc2",
+      "userId": "ef51dcee-33af-488f-9d41-f4ed865894e1",
+      "userName": "Abdul-Waliyi Ozemoya Muhammed",
+      "email": "abdul@ariesng.com",
+      "codeHash": "6b340dfb39d624050369438534546c79:2959a421040b44b5f46135b665cb0a176cbbfb48ff2e38c4cb1236786ea940cf",
+      "expiresAt": "2026-11-16T20:01:59.480Z",
+      "status": "needs-admin",
+      "createdAt": "2026-11-16T19:46:59.480Z"
+    }
+  ],
   "seq": 1
 }
