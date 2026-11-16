@@ -66,7 +66,23 @@ function loadDb() {
   db.audit ||= [];
   db.resets ||= [];
   db.seq ||= 1;
+  if (ensureSingleAdmin(db)) saveDb(db);
   return db;
+}
+
+function ensureSingleAdmin(db) {
+  if (!db.users.length) return false;
+  const sorted = [...db.users].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  const admin = sorted.find((user) => user.role === "admin") || sorted[0];
+  let changed = false;
+  for (const user of db.users) {
+    const role = user.id === admin.id ? "admin" : "staff";
+    if (user.role !== role) {
+      user.role = role;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function saveDb(db) {
@@ -333,9 +349,11 @@ function describeChanges(before, after) {
 }
 
 function addAudit(db, entry) {
+  const account = db.users.find((user) => user.id === entry.userId);
   db.audit.unshift({
     id: crypto.randomUUID(),
     at: new Date().toISOString(),
+    username: account?.username || "",
     ...entry,
   });
   if (db.audit.length > 2000) db.audit.length = 2000;
@@ -728,6 +746,11 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/api/auth/setup", (_req, res) => {
+  const db = loadDb();
+  res.json({ needsSetup: db.users.length === 0 });
+});
+
 app.get("/api/auth/me", (req, res) => {
   const db = loadDb();
   const user = currentUser(req, db);
@@ -741,8 +764,8 @@ app.get("/api/auth/me", (req, res) => {
 app.post("/api/auth/register", (req, res) => {
   const db = loadDb();
   const actor = currentUser(req, db);
-  if (actor && actor.role !== "admin") {
-    res.status(403).json({ error: "Only an administrator can create an account." });
+  if (db.users.length > 0 && (!actor || actor.role !== "admin")) {
+    res.status(403).json({ error: "Only the administrator can create a staff account." });
     return;
   }
   const name = clean(req.body?.name, 80);
@@ -999,7 +1022,10 @@ app.put("/api/users/:id", requireUser, (req, res) => {
   }
   const name = clean(req.body?.name, 80);
   const contact = readContact(req.body);
-  const role = req.body?.role === "admin" ? "admin" : "staff";
+  if (req.body?.role === "admin" && user.role !== "admin") {
+    res.status(400).json({ error: "There is only one administrator. Other accounts stay as staff." });
+    return;
+  }
   if (contact.error) {
     res.status(400).json({ error: contact.error });
     return;
@@ -1012,14 +1038,9 @@ app.put("/api/users/:id", requireUser, (req, res) => {
     res.status(400).json({ error: "That company email is already on an account." });
     return;
   }
-  if (user.role === "admin" && role !== "admin" && req.db.users.filter((entry) => entry.role === "admin").length === 1) {
-    res.status(400).json({ error: "Keep at least one administrator." });
-    return;
-  }
   user.name = name;
   user.email = contact.email;
   user.phone = contact.phone;
-  user.role = role;
   if (req.user.id === user.id) req.user.name = name;
   addAudit(req.db, {
     userId: req.user.id,
@@ -1028,7 +1049,7 @@ app.put("/api/users/:id", requireUser, (req, res) => {
     itemId: "",
     tag: "",
     itemName: "",
-    details: `${req.user.name} updated the account ${user.name} (@${user.username}) as ${user.role}.`,
+    details: `${req.user.name} updated the staff account ${user.name} (@${user.username}).`,
   });
   saveDb(req.db);
   res.json({ user: publicUser(user) });
@@ -1430,7 +1451,7 @@ function listen(port) {
       console.log(`Other people:       http://${address}:${port}`);
     }
     console.log("");
-    console.log("The first account created becomes the administrator.");
+    console.log("One administrator. Every other account is staff and shares this record.");
     console.log("Leave this window open while the store is in use.");
     console.log("");
   });

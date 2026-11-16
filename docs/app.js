@@ -18,6 +18,7 @@ const state = {
   user: null,
   view: "inventory",
   authMode: "login",
+  needsSetup: false,
   items: [],
   audit: [],
   users: [],
@@ -195,12 +196,12 @@ function authHtml() {
   const mode = state.authMode;
   const title = mode === "register" ? "Create account" : mode === "forgot" ? "Reset password" : mode === "reset" ? "Enter reset code" : "Sign in";
   const lede = mode === "register"
-    ? "Use your real name. It appears on every item you add or update. Company email and phone are optional. The first account is the administrator."
+    ? "This first account is the only administrator. Every account created after it is staff and shares the same inventory."
     : mode === "forgot"
       ? "Enter the company email on the account. If mail is set up, a code is sent. Otherwise an administrator sets the new password."
       : mode === "reset"
         ? "Enter the 6-digit code from the company email and choose a new password."
-        : "Sign in with your username or company email.";
+        : "Sign in with your username or company email. Staff accounts are created by the administrator.";
   return `
     <div class="auth-wrap">
       <section class="auth-brand">
@@ -208,7 +209,7 @@ function authHtml() {
         <div>
           <h1>Store inventory record</h1>
           <p>A shared list of every tool and other item: quantity, condition, where it is, and who it was handed to.</p>
-          ${window.ARIES_LOCAL ? `<p>On this public page, the record stays in this browser.</p>` : ""}
+          ${window.ARIES_LOCAL ? `<p>This public page keeps a separate copy in this browser, so other people will not see it. Use the office address on the store computer for the shared record.</p>` : `<p>Every staff account sees this same inventory and activity log. The administrator is the only person who manages accounts.</p>`}
           <ul class="auth-points">
             <li>Network equipment, cables, tools, and other stock are kept in one record.</li>
             <li>Every change stores the name of the person who made it.</li>
@@ -236,7 +237,7 @@ function authHtml() {
             <label>New password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>` : ""}
             <button class="btn primary" type="submit">${mode === "register" ? "Create account" : mode === "forgot" ? "Send reset" : mode === "reset" ? "Set new password" : "Sign in"}</button>
             ${mode === "login" ? `<button class="linkish" type="button" id="forgot-auth">Forgot password</button>` : ""}
-            <button class="linkish" type="button" id="switch-auth">${mode === "register" ? "I already have an account" : "Create an account"}</button>
+            ${state.needsSetup || mode === "register" ? `<button class="linkish" type="button" id="switch-auth">${mode === "register" ? "I already have an account" : "Create the administrator account"}</button>` : ""}
           </div>
         </form>
       </section>
@@ -335,7 +336,7 @@ function shellHtml() {
           <button data-view="inventory" class="${state.view === "inventory" ? "active" : ""}">Inventory</button>
           <button data-view="activity" class="${state.view === "activity" ? "active" : ""}">Activity</button>
           <button data-view="accounts" class="${state.view === "accounts" ? "active" : ""}">Accounts</button>
-          <p class="foot">RC 680979<br />Changes are saved for everyone on this server.</p>
+          <p class="foot">RC 680979<br />One shared record. Each change is tagged with the account that made it.</p>
         </nav>
         <main class="content" id="main"></main>
       </div>
@@ -440,7 +441,7 @@ function inventoryHtml() {
     <div class="page-head">
       <div>
         <h2>Inventory</h2>
-        <p id="summary">${summaryText(items)}</p>
+        <p id="summary">${summaryText(items)} Every account sees this list.</p>
       </div>
       <div class="btn-row">
         <a class="btn ghost" id="export-csv" href="${esc(exportHref("csv"))}">Export CSV</a>
@@ -497,7 +498,7 @@ function itemCells(item) {
     <td data-label="Status"><span class="badge ${statusClass(item.status)}">${esc(item.status)}</span>${needsReview(item) ? `<span class="sub">Review due</span>` : ""}</td>
     <td data-label="Location">${esc(where)}</td>
     <td data-label="Handed to">${esc(item.handedTo || "—")}</td>
-    <td data-label="Updated">${esc(item.updatedByName)}<span class="sub">${esc(relative(item.updatedAt))}</span></td>`;
+    <td data-label="Updated">${esc(item.updatedByName || "—")}<span class="sub">${esc(relative(item.updatedAt))}</span>${item.createdByName && item.createdByName !== item.updatedByName ? `<span class="sub">Added by ${esc(item.createdByName)}</span>` : ""}</td>`;
 }
 
 function rowsHtml(items) {
@@ -956,7 +957,7 @@ function activityHtml() {
     <div class="page-head">
       <div>
         <h2>Activity</h2>
-        <p>Showing ${shown.length} of ${state.audit.length}. Filter by the person, the tag, or the kind of change.</p>
+        <p>Showing ${shown.length} of ${state.audit.length}. This is the shared log. Each line is tagged with the account that made the change.</p>
       </div>
     </div>
     <div class="toolbar">
@@ -980,7 +981,7 @@ function auditCards(entries) {
       (entry) => `<article class="activity">
         <time>${esc(stamp(entry.at))}</time>
         <div>
-          <strong>${esc(entry.userName)}</strong>
+          <strong>${esc(entry.userName)}</strong>${entry.username ? ` <span class="sub">@${esc(entry.username)}</span>` : ""}
           <span class="badge ${entry.action === "deleted" ? "bad" : entry.action === "created" ? "good" : "orange"}">${esc(entry.action)}</span>
           ${entry.tag ? `<span class="badge">${esc(entry.tag)}</span>` : ""}
           <p style="margin:8px 0 0">${esc(entry.details)}</p>
@@ -996,7 +997,7 @@ function bindActivity() {
   const paint = () => {
     const shown = filteredAudit();
     const summary = document.querySelector(".page-head p");
-    if (summary) summary.textContent = `Showing ${shown.length} of ${state.audit.length}. Filter by the person, the tag, or the kind of change.`;
+    if (summary) summary.textContent = `Showing ${shown.length} of ${state.audit.length}. This is the shared log. Each line is tagged with the account that made the change.`;
     const cards = document.getElementById("audit-rows");
     const host = cards || document.querySelector(".content .table-wrap");
     if (!shown.length) {
@@ -1033,7 +1034,7 @@ function accountsHtml() {
     <div class="page-head">
       <div>
         <h2>Accounts</h2>
-        <p>Each person signs in with their own name so updates can be traced. Company email is optional and is used to reset a password.</p>
+        <p>${state.user.role === "admin" ? "You are the only administrator. Create staff accounts here. Staff use the same inventory and activity log, and every change keeps their name." : "You are staff. You see the same inventory and activity as every other account. The administrator manages accounts."}</p>
       </div>
     </div>
     ${state.error ? `<div class="alert" style="margin-bottom:12px">${esc(state.error)}</div>` : ""}
@@ -1085,10 +1086,7 @@ function accountsHtml() {
                 <label>Full name<input name="name" value="${esc(user.name)}" required /></label>
                 <label>Company email<input name="email" type="email" value="${esc(user.email || "")}" placeholder="optional" /></label>
                 <label>Phone<input name="phone" value="${esc(user.phone || "")}" placeholder="optional" /></label>
-                <label>Role<select name="role">
-                  <option value="staff" ${user.role === "staff" ? "selected" : ""}>Staff</option>
-                  <option value="admin" ${user.role === "admin" ? "selected" : ""}>Administrator</option>
-                </select></label>
+                <p class="lede">${user.role === "admin" ? "This is the only administrator account." : "Staff account. It cannot be made an administrator."}</p>
                 <button class="btn small" type="submit">Save account</button>
               </div>
             </form>
@@ -1176,7 +1174,7 @@ function bindAccounts() {
       try {
         const saved = await api(`/api/users/${form.dataset.manage}`, {
           method: "PUT",
-          body: { name: data.get("name"), email: data.get("email"), phone: data.get("phone"), role: data.get("role") },
+          body: { name: data.get("name"), email: data.get("email"), phone: data.get("phone") },
         });
         if (saved.user.id === state.user.id) state.user = saved.user;
         state.notice = `Account updated for ${person ? person.name : saved.user.name}.`;
@@ -1271,6 +1269,12 @@ setInterval(async () => {
 }, 15000);
 
 async function boot() {
+  try {
+    const setup = await api("/api/auth/setup");
+    state.needsSetup = !!setup.needsSetup;
+  } catch {
+    state.needsSetup = false;
+  }
   try {
     const data = await api("/api/auth/me");
     state.user = data.user;

@@ -23,10 +23,19 @@ if (!location.hostname.endsWith("github.io")) {
       parsed.audit ||= [];
       parsed.resets ||= [];
       parsed.seq ||= 1;
+      ensureSingleAdmin(parsed);
+      saveDb(parsed);
       return parsed;
     } catch {
       return { users: [], items: [], audit: [], resets: [], seq: 1 };
     }
+  }
+
+  function ensureSingleAdmin(db) {
+    if (!db.users.length) return;
+    const sorted = [...db.users].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    const admin = sorted.find((user) => user.role === "admin") || sorted[0];
+    for (const user of db.users) user.role = user.id === admin.id ? "admin" : "staff";
   }
 
   function saveDb(db) {
@@ -85,7 +94,8 @@ if (!location.hostname.endsWith("github.io")) {
   }
 
   function addAudit(db, entry) {
-    db.audit.unshift({ id: crypto.randomUUID(), at: new Date().toISOString(), ...entry });
+    const account = db.users.find((user) => user.id === entry.userId);
+    db.audit.unshift({ id: crypto.randomUUID(), at: new Date().toISOString(), username: account?.username || "", ...entry });
     if (db.audit.length > 2000) db.audit.length = 2000;
   }
 
@@ -393,6 +403,7 @@ if (!location.hostname.endsWith("github.io")) {
     }
     const requireUser = () => user || null;
 
+    if (method === "GET" && path === "/api/auth/setup") return json(200, { needsSetup: db.users.length === 0 });
     if (method === "GET" && path === "/api/auth/me") {
       if (!user) return json(401, { error: "Please sign in." });
       return json(200, { user: publicUser(user), reviewDays: 30 });
@@ -407,7 +418,7 @@ if (!location.hostname.endsWith("github.io")) {
       if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) return json(400, { error: "Username must be 3–32 characters: letters, numbers, dots, or dashes." });
       if (password.length < 6) return json(400, { error: "Password must be at least 6 characters." });
       if (db.users.some((entry) => entry.username === username)) return json(400, { error: "That username is already in use." });
-      if (user && user.role !== "admin") return json(403, { error: "Only an administrator can create an account." });
+      if (db.users.length > 0 && (!user || user.role !== "admin")) return json(403, { error: "Only the administrator can create a staff account." });
       if (contact.email && db.users.some((entry) => entry.email === contact.email)) return json(400, { error: "That company email is already on an account." });
       const created = { id: crypto.randomUUID(), name, username, email: contact.email, phone: contact.phone, passwordHash: await hashPassword(password), role: db.users.length === 0 ? "admin" : "staff", createdAt: new Date().toISOString() };
       db.users.push(created);
@@ -481,16 +492,14 @@ if (!location.hostname.endsWith("github.io")) {
       if (!target) return json(404, { error: "Account not found." });
       const name = clean(body.name, 80);
       const contact = readContact(body);
-      const role = body.role === "admin" ? "admin" : "staff";
+      if (body.role === "admin" && target.role !== "admin") return json(400, { error: "There is only one administrator. Other accounts stay as staff." });
       if (contact.error) return json(400, { error: contact.error });
       if (name.length < 2) return json(400, { error: "Enter the person's full name." });
       if (contact.email && db.users.some((entry) => entry.email === contact.email && entry.id !== target.id)) return json(400, { error: "That company email is already on an account." });
-      if (target.role === "admin" && role !== "admin" && db.users.filter((entry) => entry.role === "admin").length === 1) return json(400, { error: "Keep at least one administrator." });
       target.name = name;
       target.email = contact.email;
       target.phone = contact.phone;
-      target.role = role;
-      addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated the account ${target.name} (@${target.username}) as ${target.role}.` });
+      addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated the staff account ${target.name} (@${target.username}).` });
       saveDb(db);
       return json(200, { user: publicUser(target) });
     }
