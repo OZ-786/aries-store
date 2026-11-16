@@ -21,7 +21,9 @@ const state = {
   items: [],
   audit: [],
   users: [],
-  filters: { q: "", section: "All", status: "All", condition: "All", review: false },
+  filters: { q: "", section: "All", status: "All", condition: "All", review: false, period: "all", from: "", to: "" },
+  resets: [],
+  resetEmail: "",
   activityFilters: { q: "", user: "All", action: "All", tag: "" },
   highlightId: null,
   layout: "list",
@@ -160,6 +162,11 @@ function exportHref(kind) {
   if (state.filters.status !== "All") params.set("status", state.filters.status);
   if (state.filters.condition !== "All") params.set("condition", state.filters.condition);
   if (state.filters.review) params.set("review", "1");
+  if (state.filters.period && state.filters.period !== "all") params.set("period", state.filters.period);
+  if (state.filters.period === "custom") {
+    if (state.filters.from) params.set("from", state.filters.from);
+    if (state.filters.to) params.set("to", state.filters.to);
+  }
   const query = params.toString();
   return `/api/export/${kind}${query ? `?${query}` : ""}`;
 }
@@ -185,7 +192,15 @@ function draw() {
 }
 
 function authHtml() {
-  const login = state.authMode === "login";
+  const mode = state.authMode;
+  const title = mode === "register" ? "Create account" : mode === "forgot" ? "Reset password" : mode === "reset" ? "Enter reset code" : "Sign in";
+  const lede = mode === "register"
+    ? "Use your real name. It appears on every item you add or update. Company email and phone are optional. The first account is the administrator."
+    : mode === "forgot"
+      ? "Enter the company email on the account. If mail is set up, a code is sent. Otherwise an administrator sets the new password."
+      : mode === "reset"
+        ? "Enter the 6-digit code from the company email and choose a new password."
+        : "Sign in with your username or company email.";
   return `
     <div class="auth-wrap">
       <section class="auth-brand">
@@ -197,21 +212,31 @@ function authHtml() {
           <ul class="auth-points">
             <li>Network equipment, cables, tools, and other stock are kept in one record.</li>
             <li>Every change stores the name of the person who made it.</li>
-            <li>Export the current list to CSV or PDF.</li>
+            <li>Export a month, a year, or a custom range, with a summary and charts.</li>
           </ul>
         </div>
       </section>
       <section class="auth-panel">
         <form class="auth-card" id="auth-form">
-          <h2>${login ? "Sign in" : "Create account"}</h2>
-          <p class="lede">${login ? "Use the username and password for your store account." : "Use your real name. It appears on every item you add or update. The first account is the administrator."}</p>
+          <h2>${title}</h2>
+          <p class="lede">${lede}</p>
           ${state.error ? `<div class="alert">${esc(state.error)}</div>` : ""}
-          ${login ? "" : `<label>Full name<input name="name" autocomplete="name" required placeholder="e.g. Adaeze Okonkwo" /></label>`}
+          ${state.notice ? `<div class="notice">${esc(state.notice)}</div>` : ""}
+          ${mode === "register" ? `<label>Full name<input name="name" autocomplete="name" required placeholder="e.g. Adaeze Okonkwo" /></label>` : ""}
           <div class="form-grid" style="margin-top:14px">
-            <label>Username<input name="username" autocomplete="username" required placeholder="adaeze" /></label>
-            <label>Password<input name="password" type="password" autocomplete="${login ? "current-password" : "new-password"}" required minlength="6" /></label>
-            <button class="btn primary" type="submit">${login ? "Sign in" : "Create account"}</button>
-            <button class="linkish" type="button" id="switch-auth">${login ? "Create an account" : "I already have an account"}</button>
+            ${mode === "login" ? `<label>Username or company email<input name="username" autocomplete="username" required /></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="6" /></label>` : ""}
+            ${mode === "register" ? `<label>Username<input name="username" autocomplete="username" required placeholder="adaeze" /></label>
+            <label>Company email <span class="sub">optional</span><input name="email" type="email" autocomplete="email" placeholder="name@company.com" /></label>
+            <label>Phone <span class="sub">optional</span><input name="phone" autocomplete="tel" placeholder="0800 000 0000" /></label>
+            <label>Password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>` : ""}
+            ${mode === "forgot" ? `<label>Company email<input name="email" type="email" autocomplete="email" required placeholder="name@company.com" /></label>` : ""}
+            ${mode === "reset" ? `<label>Company email<input name="email" type="email" required value="${esc(state.resetEmail)}" /></label>
+            <label>Reset code<input name="code" inputmode="numeric" required placeholder="6 digits" /></label>
+            <label>New password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>` : ""}
+            <button class="btn primary" type="submit">${mode === "register" ? "Create account" : mode === "forgot" ? "Send reset" : mode === "reset" ? "Set new password" : "Sign in"}</button>
+            ${mode === "login" ? `<button class="linkish" type="button" id="forgot-auth">Forgot password</button>` : ""}
+            <button class="linkish" type="button" id="switch-auth">${mode === "register" ? "I already have an account" : "Create an account"}</button>
           </div>
         </form>
       </section>
@@ -219,15 +244,29 @@ function authHtml() {
 }
 
 function bindAuth() {
-  document.getElementById("switch-auth").onclick = () => {
-    state.authMode = state.authMode === "login" ? "register" : "login";
-    state.error = "";
-    draw();
-  };
+  const switchAuth = document.getElementById("switch-auth");
+  if (switchAuth) {
+    switchAuth.onclick = () => {
+      state.authMode = state.authMode === "register" ? "login" : "register";
+      state.error = "";
+      state.notice = "";
+      draw();
+    };
+  }
+  const forgot = document.getElementById("forgot-auth");
+  if (forgot) {
+    forgot.onclick = () => {
+      state.authMode = "forgot";
+      state.error = "";
+      state.notice = "";
+      draw();
+    };
+  }
   document.getElementById("auth-form").onsubmit = async (event) => {
     event.preventDefault();
     const form = new FormData(event.target);
     state.error = "";
+    state.notice = "";
     state.busy = true;
     try {
       if (state.authMode === "login") {
@@ -236,14 +275,35 @@ function bindAuth() {
           body: { username: form.get("username"), password: form.get("password") },
         });
         state.user = data.user;
-      } else {
+        await refreshItems();
+      } else if (state.authMode === "register") {
         const data = await api("/api/auth/register", {
           method: "POST",
-          body: { name: form.get("name"), username: form.get("username"), password: form.get("password") },
+          body: {
+            name: form.get("name"),
+            username: form.get("username"),
+            email: form.get("email"),
+            phone: form.get("phone"),
+            password: form.get("password"),
+          },
         });
         state.user = data.user;
+        await refreshItems();
+      } else if (state.authMode === "forgot") {
+        const data = await api("/api/auth/forgot", { method: "POST", body: { email: form.get("email") } });
+        state.resetEmail = String(form.get("email") || "");
+        state.notice = data.message;
+        state.authMode = data.mailed ? "reset" : "login";
+        draw();
+        return;
+      } else {
+        const data = await api("/api/auth/reset", {
+          method: "POST",
+          body: { email: form.get("email"), code: form.get("code"), password: form.get("password") },
+        });
+        state.user = data.user;
+        await refreshItems();
       }
-      await refreshItems();
       draw();
     } catch (error) {
       state.error = error.message;
@@ -339,8 +399,21 @@ function sectionOptions() {
   return [...SECTIONS, ...[...new Set(extras)].sort((a, b) => a.localeCompare(b))];
 }
 
+function todayStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function recordAttention(items) {
+  const today = todayStamp();
+  const overdue = items.filter((item) => item.expectedReturn && item.expectedReturn < today && (item.status === "Issued to site" || item.status === "On site")).length;
+  const missing = items.filter((item) => item.status === "Missing").length;
+  const attention = items.filter((item) => item.condition === "Poor" || item.condition === "Damaged" || item.status === "Missing").length;
+  return { overdue, missing, attention };
+}
+
 function summaryText(items) {
-  return `Showing ${items.length} of ${state.items.length}. Update a record when an item moves, and your name is stored on it.`;
+  const focus = recordAttention(items);
+  return `Showing ${items.length} of ${state.items.length}. ${focus.overdue} overdue return${focus.overdue === 1 ? "" : "s"}, ${focus.missing} missing, ${focus.attention} poor, damaged, or missing.`;
 }
 
 function statsHtml(items) {
@@ -349,11 +422,14 @@ function statsHtml(items) {
   const withClients = items.filter((item) => item.status === "On site" || item.status === "Issued to site").length;
   const due = state.items.filter(needsReview).length;
   const dueShown = items.filter(needsReview).length;
+  const focus = recordAttention(items);
   return `
       <div class="stat"><b>${items.length}</b><span>Items shown</span></div>
       <div class="stat"><b>${Number(qty.toFixed(2))}</b><span>Quantity</span></div>
       <div class="stat"><b>${inStore}</b><span>In the store</span></div>
       <div class="stat"><b>${withClients}</b><span>Issued to site</span></div>
+      <div class="stat ${focus.overdue ? "alerting" : ""}"><b>${focus.overdue}</b><span>Overdue returns</span></div>
+      <div class="stat ${focus.attention ? "alerting" : ""}"><b>${focus.attention}</b><span>Poor, damaged, or missing</span></div>
       <div class="stat ${due ? "alerting" : ""}"><b>${dueShown}</b><span>Need a ${state.reviewDays}-day check</span></div>`;
 }
 
@@ -392,6 +468,16 @@ function inventoryHtml() {
         ${CONDITIONS.map((condition) => `<option value="${esc(condition)}" ${state.filters.condition === condition ? "selected" : ""}>${esc(condition)}</option>`).join("")}
       </select>
       <button class="chip ${state.filters.review ? "active" : ""}" id="review-toggle">Needs review</button>
+      <select id="period" title="Dates included in CSV and PDF">
+        <option value="all" ${state.filters.period === "all" ? "selected" : ""}>Export all dates</option>
+        <option value="this-month" ${state.filters.period === "this-month" ? "selected" : ""}>This month</option>
+        <option value="last-month" ${state.filters.period === "last-month" ? "selected" : ""}>Last month</option>
+        <option value="this-year" ${state.filters.period === "this-year" ? "selected" : ""}>This year</option>
+        <option value="last-year" ${state.filters.period === "last-year" ? "selected" : ""}>Last year</option>
+        <option value="custom" ${state.filters.period === "custom" ? "selected" : ""}>Custom dates</option>
+      </select>
+      <input type="date" id="export-from" value="${esc(state.filters.from)}" ${state.filters.period === "custom" ? "" : "hidden"} />
+      <input type="date" id="export-to" value="${esc(state.filters.to)}" ${state.filters.period === "custom" ? "" : "hidden"} />
       <button class="tab ${state.layout === "list" ? "active" : ""}" id="layout-list">List</button>
       <button class="tab ${state.layout === "sites" ? "active" : ""}" id="layout-sites">By site</button>
     </div>
@@ -546,6 +632,17 @@ function bindView() {
       draw();
     };
   }
+  const period = document.getElementById("period");
+  if (period) {
+    period.onchange = () => {
+      state.filters.period = period.value;
+      draw();
+    };
+  }
+  const exportFrom = document.getElementById("export-from");
+  const exportTo = document.getElementById("export-to");
+  if (exportFrom) exportFrom.onchange = () => { state.filters.from = exportFrom.value; paintRows(); };
+  if (exportTo) exportTo.onchange = () => { state.filters.to = exportTo.value; paintRows(); };
   const list = document.getElementById("layout-list");
   const sites = document.getElementById("layout-sites");
   if (list) list.onclick = () => { state.layout = "list"; draw(); };
@@ -931,28 +1028,40 @@ function bindActivity() {
 }
 
 function accountsHtml() {
+  const pending = state.user.role === "admin" ? state.resets.filter((entry) => entry.status === "needs-admin" || entry.status === "open") : [];
   return `
     <div class="page-head">
       <div>
         <h2>Accounts</h2>
-        <p>Each person signs in with their own name so updates can be traced.</p>
+        <p>Each person signs in with their own name so updates can be traced. Company email is optional and is used to reset a password.</p>
       </div>
     </div>
     ${state.error ? `<div class="alert" style="margin-bottom:12px">${esc(state.error)}</div>` : ""}
     ${state.notice ? `<div class="notice" style="margin-bottom:12px">${esc(state.notice)}</div>` : ""}
+    ${pending.length ? `<div class="banner">${pending.length} password reset${pending.length === 1 ? "" : "s"} waiting. Set a new password on that account if mail did not send a code.</div>` : ""}
     <div class="account-grid">
       <form class="panel" id="create-account">
         <h3>Create account</h3>
         <div class="form-grid">
           <label>Full name<input name="name" required placeholder="Person's real name" /></label>
           <label>Username<input name="username" required placeholder="letters and numbers" /></label>
+          <label>Company email <span class="sub">optional</span><input name="email" type="email" placeholder="name@company.com" /></label>
+          <label>Phone <span class="sub">optional</span><input name="phone" placeholder="0800 000 0000" /></label>
           <label>Password<input name="password" type="password" required minlength="6" /></label>
           <button class="btn primary" type="submit">Create account</button>
         </div>
       </form>
+      <form class="panel" id="profile-form">
+        <h3>Your contact</h3>
+        <p class="lede">Signed in as ${esc(state.user.name)} (@${esc(state.user.username)}). Add a company email here if the account was created without one.</p>
+        <div class="form-grid">
+          <label>Company email<input name="email" type="email" value="${esc(state.user.email || "")}" placeholder="optional" /></label>
+          <label>Phone<input name="phone" value="${esc(state.user.phone || "")}" placeholder="optional" /></label>
+          <button class="btn ghost" type="submit">Save contact</button>
+        </div>
+      </form>
       <form class="panel" id="change-password">
         <h3>Your password</h3>
-        <p class="lede">Signed in as ${esc(state.user.name)} (@${esc(state.user.username)}).</p>
         <div class="form-grid">
           <label>Current password<input name="current" type="password" required /></label>
           <label>New password<input name="next" type="password" required minlength="6" /></label>
@@ -966,8 +1075,9 @@ function accountsHtml() {
           (user) => `<article class="person">
             <strong>${esc(user.name)}</strong>
             <span class="badge ${user.role === "admin" ? "orange" : ""}">${esc(user.role)}</span>
-            <span class="sub">@${esc(user.username)} · joined ${esc(stamp(user.createdAt))}</span>
-            ${state.user.role === "admin" && user.id !== state.user.id ? `<div style="margin-top:8px"><button class="btn small danger" data-remove="${user.id}">Remove account</button></div>` : ""}
+            <span class="sub">@${esc(user.username)}${user.email ? ` · ${esc(user.email)}` : " · no company email"}${user.phone ? ` · ${esc(user.phone)}` : ""}</span>
+            <span class="sub">Joined ${esc(stamp(user.createdAt))}</span>
+            ${state.user.role === "admin" && user.id !== state.user.id ? `<form class="form-grid" data-set-password="${user.id}" style="margin-top:8px"><input name="password" type="password" minlength="6" placeholder="New password" required /><button class="btn small" type="submit">Set password</button></form><div style="margin-top:8px"><button class="btn small danger" data-remove="${user.id}">Remove account</button></div>` : ""}
           </article>`
         )
         .join("")}
@@ -985,9 +1095,34 @@ function bindAccounts() {
     try {
       await api("/api/auth/register", {
         method: "POST",
-        body: { name: form.get("name"), username: form.get("username"), password: form.get("password") },
+        body: {
+          name: form.get("name"),
+          username: form.get("username"),
+          email: form.get("email"),
+          phone: form.get("phone"),
+          password: form.get("password"),
+        },
       });
-      state.notice = "Account created. They can sign in with that username.";
+      state.notice = "Account created. They can sign in with that username or company email.";
+      await refreshUsers();
+      draw();
+    } catch (error) {
+      state.error = error.message;
+      draw();
+    }
+  };
+  document.getElementById("profile-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    state.error = "";
+    state.notice = "";
+    try {
+      const data = await api("/api/auth/profile", {
+        method: "POST",
+        body: { email: form.get("email"), phone: form.get("phone") },
+      });
+      state.user = data.user;
+      state.notice = "Company email and phone saved.";
       await refreshUsers();
       draw();
     } catch (error) {
@@ -1012,6 +1147,23 @@ function bindAccounts() {
       draw();
     }
   };
+  document.querySelectorAll("[data-set-password]").forEach((form) => {
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const password = new FormData(form).get("password");
+      const person = state.users.find((entry) => entry.id === form.dataset.setPassword);
+      try {
+        await api(`/api/users/${form.dataset.setPassword}/password`, { method: "POST", body: { password } });
+        state.notice = `New password set for ${person ? person.name : "that account"}.`;
+        state.error = "";
+        await refreshUsers();
+        draw();
+      } catch (error) {
+        state.error = error.message;
+        draw();
+      }
+    };
+  });
   document.querySelectorAll("[data-remove]").forEach((button) => {
     button.onclick = async () => {
       const user = state.users.find((entry) => entry.id === button.dataset.remove);
@@ -1043,6 +1195,7 @@ async function refreshAudit() {
 async function refreshUsers() {
   const data = await api("/api/users");
   state.users = data.users;
+  state.resets = data.resets || [];
 }
 
 document.addEventListener("keydown", (event) => {

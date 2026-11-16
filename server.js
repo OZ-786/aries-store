@@ -2,8 +2,10 @@
 
 const crypto = require("crypto");
 const fs = require("fs");
+const net = require("net");
 const os = require("os");
 const path = require("path");
+const tls = require("tls");
 const http = require("http");
 
 const PORT_START = Number(process.env.PORT) || 8080;
@@ -62,6 +64,7 @@ function loadDb() {
   db.users ||= [];
   db.items ||= [];
   db.audit ||= [];
+  db.resets ||= [];
   db.seq ||= 1;
   return db;
 }
@@ -104,9 +107,92 @@ function publicUser(user) {
     id: user.id,
     name: user.name,
     username: user.username,
+    email: user.email || "",
+    phone: user.phone || "",
     role: user.role,
     createdAt: user.createdAt,
   };
+}
+
+function validEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function readContact(body) {
+  const email = clean(body?.email, 120).toLowerCase();
+  const phone = clean(body?.phone, 40);
+  if (email && !validEmail(email)) return { error: "Enter a valid company email, or leave it blank." };
+  if (phone && !/^[0-9+\-() ]{6,40}$/.test(phone)) return { error: "Enter a phone number with digits only, or leave it blank." };
+  return { email, phone };
+}
+
+function findAccount(db, login) {
+  const key = clean(login, 120).toLowerCase();
+  return db.users.find((user) => user.username === key || (user.email && user.email === key)) || null;
+}
+
+function sendMail({ to, subject, text }) {
+  const host = process.env.SMTP_HOST;
+  const from = process.env.SMTP_FROM;
+  if (!host || !from) return Promise.resolve(false);
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const user = process.env.SMTP_USER || "";
+  const pass = process.env.SMTP_PASS || "";
+  return new Promise((resolve) => {
+    let socket = net.connect(port, host);
+    let buffer = "";
+    let step = 0;
+    let secure = false;
+    const queue = ["EHLO aries-store", "STARTTLS"];
+    const afterTls = [
+      "EHLO aries-store",
+      ...(user ? [`AUTH LOGIN`, Buffer.from(user).toString("base64"), Buffer.from(pass).toString("base64")] : []),
+      `MAIL FROM:<${from}>`,
+      `RCPT TO:<${to}>`,
+      "DATA",
+    ];
+    const body = `From: ${from}\r\nTo: ${to}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${text}\r\n.`;
+    function write(line) {
+      socket.write(`${line}\r\n`);
+    }
+    function finish(ok) {
+      try { socket.end(); } catch { /* already closed */ }
+      resolve(ok);
+    }
+    function onData(chunk) {
+      buffer += chunk.toString("utf8");
+      if (!buffer.endsWith("\n")) return;
+      const lines = buffer.trim().split(/\r?\n/);
+      buffer = "";
+      const last = lines[lines.length - 1] || "";
+      const code = Number(last.slice(0, 3));
+      if (code >= 400) {
+        finish(false);
+        return;
+      }
+      if (!secure && step >= queue.length) {
+        socket.removeListener("data", onData);
+        socket = tls.connect({ socket, servername: host }, () => {
+          secure = true;
+          step = 0;
+          socket.on("data", onData);
+          write(afterTls[step++]);
+        });
+        socket.on("error", () => finish(false));
+        return;
+      }
+      const list = secure ? afterTls : queue;
+      if (secure && step >= list.length) {
+        write(body);
+        socket.once("data", () => { write("QUIT"); finish(true); });
+        return;
+      }
+      if (step < list.length) write(list[step++]);
+    }
+    socket.on("data", onData);
+    socket.on("error", () => finish(false));
+    socket.setTimeout(12000, () => finish(false));
+  });
 }
 
 function readCookie(req, name) {
@@ -298,7 +384,7 @@ function csvCell(value) {
   return text;
 }
 
-function buildCsv(items) {
+function buildCsv(items, summary) {
   const headers = [
     "Tag",
     "Name",
@@ -321,7 +407,13 @@ function buildCsv(items) {
     "Last updated by",
     "Last updated at",
   ];
-  const lines = [headers.join(",")];
+  const lines = [];
+  if (summary) {
+    lines.push(["Summary", summary.label].map(csvCell).join(","));
+    lines.push(["Items", summary.count, "Quantity", summary.quantity, "In store", summary.inStore, "Issued to site", summary.issued, "Missing", summary.missing, "Overdue returns", summary.overdue].map(csvCell).join(","));
+    lines.push("");
+  }
+  lines.push(headers.join(","));
   for (const item of items) {
     lines.push(
       [
@@ -442,7 +534,43 @@ function buildPdf(items, meta) {
   newPage();
   writeLine("Store inventory record", 16, true, [0.09, 0.09, 0.09], 6);
   writeLine(meta.subtitle, 9, false, [0.28, 0.28, 0.28], 4);
-  writeLine(`${items.length} item${items.length === 1 ? "" : "s"}  ·  Grouped by company and client location`, 9, false, [0.28, 0.28, 0.28], 14);
+  writeLine(`${items.length} item${items.length === 1 ? "" : "s"}  ·  ${meta.summary ? meta.summary.label : "All dates"}`, 9, false, [0.28, 0.28, 0.28], 12);
+
+  if (meta.summary) {
+    const summary = meta.summary;
+    writeLine("Summary", 13, true, [0.09, 0.09, 0.09], 8);
+    writeLine(`${summary.count} items   ·   ${summary.quantity} quantity   ·   ${summary.inStore} in store   ·   ${summary.issued} issued to site`, 10, false, [0.15, 0.15, 0.15], 6);
+    writeLine(`${summary.missing} missing   ·   ${summary.attention} poor, damaged, or missing   ·   ${summary.overdue} overdue returns   ·   ${summary.changes} changes in this period`, 10, false, [0.15, 0.15, 0.15], 12);
+    const drawBars = (title, pairs, color) => {
+      writeLine(title, 11, true, [0.09, 0.09, 0.09], 8);
+      const max = Math.max(1, ...pairs.map((pair) => pair[1]));
+      if (!pairs.length) {
+        writeLine("None", 9, false, [0.4, 0.4, 0.4], 8);
+        return;
+      }
+      for (const [label, value] of pairs.slice(0, 6)) {
+        ensure(18);
+        ops.push(["color", 0.15, 0.15, 0.15]);
+        ops.push(["text", String(label).slice(0, 22), left, y, 9, false]);
+        const width = Math.max(4, Math.round((value / max) * 220));
+        ops.push(["color", ...color]);
+        ops.push(["rect", left + 140, y - 2, width, 9]);
+        ops.push(["color", 0.25, 0.25, 0.25]);
+        ops.push(["text", String(value), left + 148 + width, y, 9, false]);
+        y -= 16;
+      }
+      y -= 4;
+    };
+    const tally = (key) => {
+      const map = new Map();
+      for (const item of items) map.set(item[key] || "—", (map.get(item[key] || "—") || 0) + 1);
+      return [...map.entries()].sort((a, b) => b[1] - a[1]);
+    };
+    drawBars("Items by section", tally("section"), [0.94, 0.48, 0.05]);
+    drawBars("Items by status", tally("status"), [0.12, 0.32, 0.55]);
+    drawBars("Items by condition", tally("condition"), [0.12, 0.45, 0.28]);
+    writeLine("Item records", 13, true, [0.09, 0.09, 0.09], 10);
+  }
 
   if (!items.length) {
     writeLine("No items match this export.", 11, false, [0.2, 0.2, 0.2], 8);
@@ -631,6 +759,11 @@ app.post("/api/auth/register", (req, res) => {
   const name = clean(req.body?.name, 80);
   const username = clean(req.body?.username, 32).toLowerCase();
   const password = String(req.body?.password || "");
+  const contact = readContact(req.body);
+  if (contact.error) {
+    res.status(400).json({ error: contact.error });
+    return;
+  }
   if (name.length < 2) {
     res.status(400).json({ error: "Enter the person's full name. It is recorded on every change." });
     return;
@@ -647,10 +780,16 @@ app.post("/api/auth/register", (req, res) => {
     res.status(400).json({ error: "That username is already in use." });
     return;
   }
+  if (contact.email && db.users.some((user) => user.email === contact.email)) {
+    res.status(400).json({ error: "That company email is already on an account." });
+    return;
+  }
   const user = {
     id: crypto.randomUUID(),
     name,
     username,
+    email: contact.email,
+    phone: contact.phone,
     passwordHash: hashPassword(password),
     role: db.users.length === 0 ? "admin" : "staff",
     createdAt: new Date().toISOString(),
@@ -672,15 +811,119 @@ app.post("/api/auth/register", (req, res) => {
 
 app.post("/api/auth/login", (req, res) => {
   const db = loadDb();
-  const username = clean(req.body?.username, 32).toLowerCase();
   const password = String(req.body?.password || "");
-  const user = db.users.find((entry) => entry.username === username);
+  const user = findAccount(db, req.body?.username);
   if (!user || !verifyPassword(password, user.passwordHash)) {
-    res.status(401).json({ error: "Username or password is incorrect." });
+    res.status(401).json({ error: "Username, email, or password is incorrect." });
     return;
   }
   setSession(res, user);
   res.json({ user: publicUser(user) });
+});
+
+app.post("/api/auth/forgot", async (req, res) => {
+  const db = loadDb();
+  const email = clean(req.body?.email, 120).toLowerCase();
+  const user = db.users.find((entry) => entry.email && entry.email === email);
+  if (!user) {
+    res.json({
+      mailed: false,
+      message: "If that company email is on an account, a reset was started. Otherwise ask an administrator to set a new password.",
+    });
+    return;
+  }
+  const code = String(crypto.randomInt(100000, 1000000));
+  db.resets = (db.resets || []).filter((entry) => entry.userId !== user.id);
+  db.resets.unshift({
+    id: crypto.randomUUID(),
+    userId: user.id,
+    userName: user.name,
+    email: user.email,
+    codeHash: hashPassword(code),
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    status: "open",
+    createdAt: new Date().toISOString(),
+  });
+  const mailed = await sendMail({
+    to: user.email,
+    subject: "Aries Store password reset",
+    text: `Hello ${user.name},\n\nYour Aries Store reset code is ${code}. It expires in 15 minutes.\n\nIf you did not ask for this, tell an administrator.\n`,
+  });
+  if (!mailed) db.resets[0].status = "needs-admin";
+  addAudit(db, {
+    userId: user.id,
+    userName: user.name,
+    action: "account",
+    itemId: "",
+    tag: "",
+    itemName: "",
+    details: mailed
+      ? `${user.name} requested a password reset by email.`
+      : `${user.name} requested a password reset. Mail is not configured, so an administrator needs to set the password.`,
+  });
+  saveDb(db);
+  res.json({
+    mailed,
+    message: mailed
+      ? "A 6-digit code was sent to that company email. It expires in 15 minutes."
+      : "Company mail is not set up on this server yet. An administrator can set a new password from Accounts.",
+  });
+});
+
+app.post("/api/auth/reset", (req, res) => {
+  const db = loadDb();
+  const email = clean(req.body?.email, 120).toLowerCase();
+  const code = clean(req.body?.code, 12);
+  const next = String(req.body?.password || "");
+  const user = db.users.find((entry) => entry.email && entry.email === email);
+  const reset = (db.resets || []).find((entry) => entry.email === email && entry.status === "open");
+  if (!user || !reset || new Date(reset.expiresAt).getTime() < Date.now() || !verifyPassword(code, reset.codeHash)) {
+    res.status(400).json({ error: "That reset code is incorrect or has expired." });
+    return;
+  }
+  if (next.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters." });
+    return;
+  }
+  user.passwordHash = hashPassword(next);
+  reset.status = "used";
+  addAudit(db, {
+    userId: user.id,
+    userName: user.name,
+    action: "account",
+    itemId: "",
+    tag: "",
+    itemName: "",
+    details: `${user.name} set a new password with an email code.`,
+  });
+  saveDb(db);
+  setSession(res, user);
+  res.json({ user: publicUser(user) });
+});
+
+app.post("/api/auth/profile", requireUser, (req, res) => {
+  const contact = readContact(req.body);
+  if (contact.error) {
+    res.status(400).json({ error: contact.error });
+    return;
+  }
+  if (contact.email && req.db.users.some((user) => user.email === contact.email && user.id !== req.user.id)) {
+    res.status(400).json({ error: "That company email is already on an account." });
+    return;
+  }
+  req.user.email = contact.email;
+  req.user.phone = contact.phone;
+  addAudit(req.db, {
+    userId: req.user.id,
+    userName: req.user.name,
+    action: "account",
+    itemId: "",
+    tag: "",
+    itemName: "",
+    details: `${req.user.name} updated their company email and phone.`,
+  });
+  saveDb(req.db);
+  res.json({ user: publicUser(req.user) });
 });
 
 app.post("/api/auth/logout", (req, res) => {
@@ -708,7 +951,51 @@ app.get("/api/users", requireUser, (req, res) => {
   const users = req.db.users
     .map(publicUser)
     .sort((a, b) => a.name.localeCompare(b.name));
-  res.json({ users });
+  const resets = req.user.role === "admin"
+    ? (req.db.resets || [])
+      .filter((entry) => entry.status === "needs-admin" || entry.status === "open")
+      .map((entry) => ({
+        id: entry.id,
+        userId: entry.userId,
+        userName: entry.userName,
+        email: entry.email,
+        status: entry.status,
+        createdAt: entry.createdAt,
+      }))
+    : [];
+  res.json({ users, resets });
+});
+
+app.post("/api/users/:id/password", requireUser, (req, res) => {
+  if (req.user.role !== "admin") {
+    res.status(403).json({ error: "Only an administrator can set another person's password." });
+    return;
+  }
+  const next = String(req.body?.password || "");
+  if (next.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters." });
+    return;
+  }
+  const user = req.db.users.find((entry) => entry.id === req.params.id);
+  if (!user) {
+    res.status(404).json({ error: "Account not found." });
+    return;
+  }
+  user.passwordHash = hashPassword(next);
+  for (const entry of req.db.resets || []) {
+    if (entry.userId === user.id && entry.status !== "used") entry.status = "set-by-admin";
+  }
+  addAudit(req.db, {
+    userId: req.user.id,
+    userName: req.user.name,
+    action: "account",
+    itemId: "",
+    tag: "",
+    itemName: "",
+    details: `${req.user.name} set a new password for ${user.name}.`,
+  });
+  saveDb(req.db);
+  res.json({ ok: true });
 });
 
 app.delete("/api/users/:id", requireUser, (req, res) => {
@@ -877,30 +1164,92 @@ app.get("/api/audit", requireUser, (req, res) => {
   res.json({ audit: req.db.audit.slice(0, 300) });
 });
 
+function resolvePeriod(query) {
+  const now = new Date();
+  const monthStart = (year, month) => new Date(year, month, 1).getTime();
+  const monthEnd = (year, month) => new Date(year, month + 1, 1).getTime() - 1;
+  const period = query.period || "all";
+  if (period === "this-month") {
+    return { from: monthStart(now.getFullYear(), now.getMonth()), to: monthEnd(now.getFullYear(), now.getMonth()), label: "This month" };
+  }
+  if (period === "last-month") {
+    return { from: monthStart(now.getFullYear(), now.getMonth() - 1), to: monthEnd(now.getFullYear(), now.getMonth() - 1), label: "Last month" };
+  }
+  if (period === "this-year") {
+    return { from: new Date(now.getFullYear(), 0, 1).getTime(), to: new Date(now.getFullYear(), 11, 31, 23, 59, 59).getTime(), label: "This year" };
+  }
+  if (period === "last-year") {
+    return { from: new Date(now.getFullYear() - 1, 0, 1).getTime(), to: new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59).getTime(), label: "Last year" };
+  }
+  if (period === "custom") {
+    const from = query.from ? new Date(`${query.from}T00:00:00`).getTime() : null;
+    const to = query.to ? new Date(`${query.to}T23:59:59`).getTime() : null;
+    return { from, to, label: `Custom ${query.from || "start"} to ${query.to || "today"}` };
+  }
+  return { from: null, to: null, label: "All dates" };
+}
+
+function stampInRange(value, range) {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return false;
+  if (range.from != null && time < range.from) return false;
+  if (range.to != null && time > range.to) return false;
+  return true;
+}
+
+function itemInPeriod(item, range) {
+  if (range.from == null && range.to == null) return true;
+  return [item.updatedAt, item.createdAt, item.issuedOn ? `${item.issuedOn}T12:00:00` : ""].some((value) => stampInRange(value, range));
+}
+
+function reportSummary(items, audit, range) {
+  const today = new Date().toISOString().slice(0, 10);
+  const issued = items.filter((item) => item.status === "Issued to site" || item.status === "On site").length;
+  const changes = (audit || []).filter((entry) => stampInRange(entry.at, range) && entry.action !== "account").length;
+  return {
+    label: range.label,
+    count: items.length,
+    quantity: Number(items.reduce((sum, item) => sum + Number(item.quantity || 0), 0).toFixed(2)),
+    inStore: items.filter((item) => item.status === "In store" || item.status === "Returned").length,
+    issued,
+    missing: items.filter((item) => item.status === "Missing").length,
+    attention: items.filter((item) => item.condition === "Poor" || item.condition === "Damaged" || item.status === "Missing").length,
+    overdue: items.filter((item) => item.expectedReturn && item.expectedReturn < today && (item.status === "Issued to site" || item.status === "On site")).length,
+    changes,
+  };
+}
+
 function filteredItems(req) {
   const now = Date.now();
-  return sortForExport(req.db.items.filter((item) => matchesFilters(item, req.query, now)));
+  const range = resolvePeriod(req.query);
+  return sortForExport(req.db.items.filter((item) => matchesFilters(item, req.query, now) && itemInPeriod(item, range)));
 }
 
 app.get("/api/export/csv", requireUser, (req, res) => {
   const items = filteredItems(req);
+  const range = resolvePeriod(req.query);
+  const summary = reportSummary(items, req.db.audit, range);
   const stamp = new Date().toISOString().slice(0, 10);
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="aries-store-inventory-${stamp}.csv"`);
-  res.send(buildCsv(items));
+  res.send(buildCsv(items, summary));
 });
 
 app.get("/api/export/pdf", requireUser, (req, res) => {
   const items = filteredItems(req);
+  const range = resolvePeriod(req.query);
+  const summary = reportSummary(items, req.db.audit, range);
   const stamp = new Date().toISOString().slice(0, 10);
-  const filters = [];
+  const filters = [summary.label];
   if (req.query.section && req.query.section !== "All") filters.push(req.query.section);
   if (req.query.status && req.query.status !== "All") filters.push(req.query.status);
   if (req.query.condition && req.query.condition !== "All") filters.push(req.query.condition);
-  if (req.query.q) filters.push(`Search “${clean(req.query.q, 80)}”`);
+  if (req.query.q) filters.push(`Search "${clean(req.query.q, 80)}"`);
   if (req.query.review === "1") filters.push(`Not updated in ${REVIEW_DAYS} days`);
   const pdf = buildPdf(items, {
-    subtitle: `Prepared by ${req.user.name} on ${formatStamp(new Date().toISOString())}${filters.length ? `  ·  ${filters.join(" · ")}` : ""}`,
+    subtitle: `Prepared by ${req.user.name} on ${formatStamp(new Date().toISOString())}  ·  ${filters.join(" · ")}`,
+    summary,
   });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="aries-store-inventory-${stamp}.pdf"`);

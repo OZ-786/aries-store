@@ -21,10 +21,11 @@ if (!location.hostname.endsWith("github.io")) {
       parsed.users ||= [];
       parsed.items ||= [];
       parsed.audit ||= [];
+      parsed.resets ||= [];
       parsed.seq ||= 1;
       return parsed;
     } catch {
-      return { users: [], items: [], audit: [], seq: 1 };
+      return { users: [], items: [], audit: [], resets: [], seq: 1 };
     }
   }
 
@@ -63,7 +64,19 @@ if (!location.hostname.endsWith("github.io")) {
   }
 
   function publicUser(user) {
-    return { id: user.id, name: user.name, username: user.username, role: user.role, createdAt: user.createdAt };
+    return { id: user.id, name: user.name, username: user.username, email: user.email || "", phone: user.phone || "", role: user.role, createdAt: user.createdAt };
+  }
+
+  function validEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  function readContact(body) {
+    const email = clean(body?.email, 120).toLowerCase();
+    const phone = clean(body?.phone, 40);
+    if (email && !validEmail(email)) return { error: "Enter a valid company email, or leave it blank." };
+    if (phone && !/^[0-9+\-() ]{6,40}$/.test(phone)) return { error: "Enter a phone number with digits only, or leave it blank." };
+    return { email, phone };
   }
 
   function sessionUser(db) {
@@ -180,9 +193,15 @@ if (!location.hostname.endsWith("github.io")) {
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }
 
-  function buildCsv(items) {
+  function buildCsv(items, summary) {
     const headers = ["Tag", "Name", "Section", "Quantity", "Unit", "Condition", "Status", "Store location", "Company name", "Client location", "Handed to", "Phone", "Issued on", "Expected return", "Serial number", "Notes", "Created by", "Created at", "Last updated by", "Last updated at"];
-    const lines = [headers.join(",")];
+    const lines = [];
+    if (summary) {
+      lines.push(["Summary", summary.label].map(csvCell).join(","));
+      lines.push(["Items", summary.count, "Quantity", summary.quantity, "In store", summary.inStore, "Issued to site", summary.issued, "Missing", summary.missing, "Overdue returns", summary.overdue].map(csvCell).join(","));
+      lines.push("");
+    }
+    lines.push(headers.join(","));
     for (const item of items) {
       lines.push([item.tag, item.name, item.section, item.quantity, item.unit, item.condition, item.status, item.storeLocation, item.companyName, item.clientLocation, item.handedTo, item.handedToPhone, item.issuedOn, item.expectedReturn, item.serialNumber, item.notes, item.createdByName, item.createdAt, item.updatedByName, item.updatedAt].map(csvCell).join(","));
     }
@@ -193,7 +212,7 @@ if (!location.hostname.endsWith("github.io")) {
     return String(value ?? "").replace(/[^\x20-\x7e]/g, "?").replace(/[\\()]/g, (char) => `\\${char}`);
   }
 
-  function buildPdf(items, subtitle) {
+  function buildPdf(items, subtitle, summary) {
     const pages = [];
     let commands = [];
     let y = 800;
@@ -211,9 +230,41 @@ if (!location.hostname.endsWith("github.io")) {
       commands.push(`BT ${bold ? "/F2" : "/F1"} ${size} Tf 40 ${y} Td (${pdfEscape(text)}) Tj ET`);
       y -= size + 6;
     }
+    function bars(title, pairs, color) {
+      line(title, 11, true);
+      const max = Math.max(1, ...pairs.map((pair) => pair[1]));
+      if (!pairs.length) {
+        line("None", 9);
+        return;
+      }
+      for (const [label, value] of pairs.slice(0, 6)) {
+        if (y < 60) page();
+        const width = Math.max(4, Math.round((value / max) * 180));
+        commands.push(`BT /F1 9 Tf 40 ${y} Td (${pdfEscape(String(label).slice(0, 22))}) Tj ET`);
+        commands.push(`${color} rg`);
+        commands.push(`${190} ${y - 2} ${width} 9 re f`);
+        commands.push(`0.2 0.2 0.2 rg`);
+        commands.push(`BT /F1 9 Tf ${200 + width} ${y} Td (${pdfEscape(String(value))}) Tj ET`);
+        y -= 16;
+      }
+    }
     page();
     line(subtitle, 9);
-    line(`${items.length} item${items.length === 1 ? "" : "s"}`, 9);
+    line(`${items.length} item${items.length === 1 ? "" : "s"}  ·  ${summary ? summary.label : "All dates"}`, 9);
+    if (summary) {
+      line("Summary", 13, true);
+      line(`${summary.count} items   ${summary.quantity} quantity   ${summary.inStore} in store   ${summary.issued} issued to site`);
+      line(`${summary.missing} missing   ${summary.attention} poor, damaged, or missing   ${summary.overdue} overdue returns   ${summary.changes} changes`);
+      const tally = (key) => {
+        const map = new Map();
+        for (const item of items) map.set(item[key] || "—", (map.get(item[key] || "—") || 0) + 1);
+        return [...map.entries()].sort((a, b) => b[1] - a[1]);
+      };
+      bars("Items by section", tally("section"), "0.94 0.48 0.05");
+      bars("Items by status", tally("status"), "0.12 0.32 0.55");
+      bars("Items by condition", tally("condition"), "0.12 0.45 0.28");
+      line("Item records", 13, true);
+    }
     y -= 8;
     if (!items.length) line("No items match this export.");
     for (const item of items) {
@@ -254,14 +305,62 @@ if (!location.hostname.endsWith("github.io")) {
     return pdf;
   }
 
+  function resolvePeriod(params) {
+    const now = new Date();
+    const monthStart = (year, month) => new Date(year, month, 1).getTime();
+    const monthEnd = (year, month) => new Date(year, month + 1, 1).getTime() - 1;
+    const period = params.get("period") || "all";
+    if (period === "this-month") return { from: monthStart(now.getFullYear(), now.getMonth()), to: monthEnd(now.getFullYear(), now.getMonth()), label: "This month" };
+    if (period === "last-month") return { from: monthStart(now.getFullYear(), now.getMonth() - 1), to: monthEnd(now.getFullYear(), now.getMonth() - 1), label: "Last month" };
+    if (period === "this-year") return { from: new Date(now.getFullYear(), 0, 1).getTime(), to: new Date(now.getFullYear(), 11, 31, 23, 59, 59).getTime(), label: "This year" };
+    if (period === "last-year") return { from: new Date(now.getFullYear() - 1, 0, 1).getTime(), to: new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59).getTime(), label: "Last year" };
+    if (period === "custom") {
+      const from = params.get("from") ? new Date(`${params.get("from")}T00:00:00`).getTime() : null;
+      const to = params.get("to") ? new Date(`${params.get("to")}T23:59:59`).getTime() : null;
+      return { from, to, label: `Custom ${params.get("from") || "start"} to ${params.get("to") || "today"}` };
+    }
+    return { from: null, to: null, label: "All dates" };
+  }
+
+  function stampInRange(value, range) {
+    if (!value) return false;
+    const time = new Date(value).getTime();
+    if (Number.isNaN(time)) return false;
+    if (range.from != null && time < range.from) return false;
+    if (range.to != null && time > range.to) return false;
+    return true;
+  }
+
+  function itemInPeriod(item, range) {
+    if (range.from == null && range.to == null) return true;
+    return [item.updatedAt, item.createdAt, item.issuedOn ? `${item.issuedOn}T12:00:00` : ""].some((value) => stampInRange(value, range));
+  }
+
+  function reportSummary(items, audit, range) {
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      label: range.label,
+      count: items.length,
+      quantity: Number(items.reduce((sum, item) => sum + Number(item.quantity || 0), 0).toFixed(2)),
+      inStore: items.filter((item) => item.status === "In store" || item.status === "Returned").length,
+      issued: items.filter((item) => item.status === "Issued to site" || item.status === "On site").length,
+      missing: items.filter((item) => item.status === "Missing").length,
+      attention: items.filter((item) => item.condition === "Poor" || item.condition === "Damaged" || item.status === "Missing").length,
+      overdue: items.filter((item) => item.expectedReturn && item.expectedReturn < today && (item.status === "Issued to site" || item.status === "On site")).length,
+      changes: (audit || []).filter((entry) => stampInRange(entry.at, range) && entry.action !== "account").length,
+    };
+  }
+
   function filtered(items, params) {
     const q = clean(params.get("q"), 120).toLowerCase();
     const now = Date.now();
+    const range = resolvePeriod(params);
     return items.filter((item) => {
       if (params.get("section") && params.get("section") !== "All" && item.section !== params.get("section")) return false;
       if (params.get("status") && params.get("status") !== "All" && item.status !== params.get("status")) return false;
       if (params.get("condition") && params.get("condition") !== "All" && item.condition !== params.get("condition")) return false;
       if (params.get("review") === "1" && now - new Date(item.updatedAt).getTime() <= REVIEW_MS) return false;
+      if (!itemInPeriod(item, range)) return false;
       if (!q) return true;
       return [item.tag, item.name, item.companyName, item.clientLocation, item.storeLocation, item.handedTo, item.serialNumber, item.notes, item.updatedByName].join(" ").toLowerCase().includes(q);
     }).sort((a, b) => `${a.companyName} ${a.clientLocation}`.localeCompare(`${b.companyName} ${b.clientLocation}`) || a.tag.localeCompare(b.tag));
@@ -286,11 +385,14 @@ if (!location.hostname.endsWith("github.io")) {
       const name = clean(body.name, 80);
       const username = clean(body.username, 32).toLowerCase();
       const password = String(body.password || "");
+      const contact = readContact(body);
+      if (contact.error) return json(400, { error: contact.error });
       if (name.length < 2) return json(400, { error: "Enter the person's full name. It is recorded on every change." });
       if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) return json(400, { error: "Username must be 3–32 characters: letters, numbers, dots, or dashes." });
       if (password.length < 6) return json(400, { error: "Password must be at least 6 characters." });
       if (db.users.some((entry) => entry.username === username)) return json(400, { error: "That username is already in use." });
-      const created = { id: crypto.randomUUID(), name, username, passwordHash: await hashPassword(password), role: db.users.length === 0 ? "admin" : "staff", createdAt: new Date().toISOString() };
+      if (contact.email && db.users.some((entry) => entry.email === contact.email)) return json(400, { error: "That company email is already on an account." });
+      const created = { id: crypto.randomUUID(), name, username, email: contact.email, phone: contact.phone, passwordHash: await hashPassword(password), role: db.users.length === 0 ? "admin" : "staff", createdAt: new Date().toISOString() };
       db.users.push(created);
       addAudit(db, { userId: user?.id || created.id, userName: user?.name || created.name, action: "account", itemId: "", tag: "", itemName: "", details: `${created.name} (@${created.username}) created an account as ${created.role}.` });
       saveDb(db);
@@ -298,11 +400,32 @@ if (!location.hostname.endsWith("github.io")) {
       return json(201, { user: publicUser(created), signedIn: !user });
     }
     if (method === "POST" && path === "/api/auth/login") {
-      const username = clean(body.username, 32).toLowerCase();
-      const found = db.users.find((entry) => entry.username === username);
-      if (!found || !(await verifyPassword(String(body.password || ""), found.passwordHash))) return json(401, { error: "Username or password is incorrect." });
+      const key = clean(body.username, 120).toLowerCase();
+      const found = db.users.find((entry) => entry.username === key || (entry.email && entry.email === key));
+      if (!found || !(await verifyPassword(String(body.password || ""), found.passwordHash))) return json(401, { error: "Username, email, or password is incorrect." });
       sessionStorage.setItem(SID_KEY, found.id);
       return json(200, { user: publicUser(found) });
+    }
+    if (method === "POST" && path === "/api/auth/forgot") {
+      const email = clean(body.email, 120).toLowerCase();
+      const found = db.users.find((entry) => entry.email && entry.email === email);
+      if (found) {
+        db.resets = (db.resets || []).filter((entry) => entry.userId !== found.id);
+        db.resets.unshift({
+          id: crypto.randomUUID(),
+          userId: found.id,
+          userName: found.name,
+          email: found.email,
+          status: "needs-admin",
+          createdAt: new Date().toISOString(),
+        });
+        addAudit(db, { userId: found.id, userName: found.name, action: "account", itemId: "", tag: "", itemName: "", details: `${found.name} requested a password reset. An administrator needs to set the password.` });
+        saveDb(db);
+      }
+      return json(200, { mailed: false, message: "This public page cannot send company mail. An administrator can set a new password from Accounts." });
+    }
+    if (method === "POST" && path === "/api/auth/reset") {
+      return json(400, { error: "This public page cannot email a reset code. Ask an administrator to set a new password." });
     }
     if (method === "POST" && path === "/api/auth/logout") {
       sessionStorage.removeItem(SID_KEY);
@@ -317,7 +440,36 @@ if (!location.hostname.endsWith("github.io")) {
       saveDb(db);
       return json(200, { ok: true });
     }
-    if (method === "GET" && path === "/api/users") return json(200, { users: db.users.map(publicUser).sort((a, b) => a.name.localeCompare(b.name)) });
+    if (method === "POST" && path === "/api/auth/profile") {
+      const contact = readContact(body);
+      if (contact.error) return json(400, { error: contact.error });
+      if (contact.email && db.users.some((entry) => entry.email === contact.email && entry.id !== user.id)) return json(400, { error: "That company email is already on an account." });
+      user.email = contact.email;
+      user.phone = contact.phone;
+      addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated their company email and phone.` });
+      saveDb(db);
+      return json(200, { user: publicUser(user) });
+    }
+    if (method === "GET" && path === "/api/users") {
+      const resets = user.role === "admin"
+        ? (db.resets || []).filter((entry) => entry.status === "needs-admin" || entry.status === "open").map((entry) => ({ id: entry.id, userId: entry.userId, userName: entry.userName, email: entry.email, status: entry.status, createdAt: entry.createdAt }))
+        : [];
+      return json(200, { users: db.users.map(publicUser).sort((a, b) => a.name.localeCompare(b.name)), resets });
+    }
+    const setPassword = path.match(/^\/api\/users\/([^/]+)\/password$/);
+    if (setPassword && method === "POST") {
+      if (user.role !== "admin") return json(403, { error: "Only an administrator can set another person's password." });
+      if (String(body.password || "").length < 6) return json(400, { error: "New password must be at least 6 characters." });
+      const target = db.users.find((entry) => entry.id === decodeURIComponent(setPassword[1]));
+      if (!target) return json(404, { error: "Account not found." });
+      target.passwordHash = await hashPassword(String(body.password));
+      for (const entry of db.resets || []) {
+        if (entry.userId === target.id && entry.status !== "used") entry.status = "set-by-admin";
+      }
+      addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} set a new password for ${target.name}.` });
+      saveDb(db);
+      return json(200, { ok: true });
+    }
     if (method === "DELETE" && path.startsWith("/api/users/")) {
       if (user.role !== "admin") return json(403, { error: "Only an administrator can remove an account." });
       const id = decodeURIComponent(path.split("/").pop());
@@ -389,9 +541,11 @@ if (!location.hostname.endsWith("github.io")) {
     if (method === "GET" && path === "/api/audit") return json(200, { audit: db.audit.slice(0, 300) });
     if (method === "GET" && (path === "/api/export/csv" || path === "/api/export/pdf")) {
       const items = filtered(db.items, url.searchParams);
+      const range = resolvePeriod(url.searchParams);
+      const summary = reportSummary(items, db.audit, range);
       const stamp = new Date().toISOString().slice(0, 10);
-      if (path.endsWith("/csv")) return fileResponse(buildCsv(items), "text/csv; charset=utf-8", `aries-store-inventory-${stamp}.csv`);
-      const pdf = buildPdf(items, `Prepared by ${user.name}`);
+      if (path.endsWith("/csv")) return fileResponse(buildCsv(items, summary), "text/csv; charset=utf-8", `aries-store-inventory-${stamp}.csv`);
+      const pdf = buildPdf(items, `Prepared by ${user.name}  ·  ${summary.label}`, summary);
       return fileResponse(pdf, "application/pdf", `aries-store-inventory-${stamp}.pdf`);
     }
     return json(404, { error: "Not found." });
