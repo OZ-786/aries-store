@@ -78,8 +78,8 @@
       "section": "Network equipment",
       "quantity": 1,
       "unit": "pcs",
-      "condition": "Good",
-      "status": "In store",
+      "condition": "Fair",
+      "status": "Missing",
       "storeLocation": "",
       "companyName": "nestle",
       "clientLocation": "agbara",
@@ -93,12 +93,24 @@
       "createdAt": "2026-11-16T20:33:55.334Z",
       "createdBy": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
       "createdByName": "Oluwaseun Agboola",
-      "updatedAt": "2026-11-16T20:33:55.334Z",
+      "updatedAt": "2026-11-16T20:34:21.132Z",
       "updatedBy": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
       "updatedByName": "Oluwaseun Agboola"
     }
   ],
   "audit": [
+    {
+      "id": "2aa4aed9-834d-46e2-8d60-86503806b470",
+      "at": "2026-11-16T20:34:21.132Z",
+      "username": "oluwaseu",
+      "userId": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
+      "userName": "Oluwaseun Agboola",
+      "action": "updated",
+      "itemId": "ab2cb02f-d3b5-4b15-ace3-32fc2951fd29",
+      "tag": "AST-0003",
+      "itemName": "ett",
+      "details": "Oluwaseun Agboola updated ett (AST-0003). Condition: Good → Fair; Status: In store → Missing"
+    },
     {
       "id": "0240360f-0405-420b-b0fe-882bc5e55861",
       "at": "2026-11-16T20:33:55.334Z",
