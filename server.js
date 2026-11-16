@@ -226,8 +226,14 @@ function readCookie(req, name) {
   return "";
 }
 
+function readToken(req) {
+  const header = String(req.headers.authorization || "");
+  if (/^Bearer\s+/i.test(header)) return header.replace(/^Bearer\s+/i, "").trim();
+  return readCookie(req, "sid");
+}
+
 function currentUser(req, db) {
-  const token = readCookie(req, "sid");
+  const token = readToken(req);
   const session = token ? sessions.get(token) : null;
   if (!session) return null;
   return db.users.find((user) => user.id === session.userId) || null;
@@ -237,12 +243,22 @@ function setSession(res, user) {
   const token = crypto.randomBytes(24).toString("hex");
   sessions.set(token, { userId: user.id, createdAt: new Date().toISOString() });
   res.cookie("sid", token, { httpOnly: true, sameSite: "lax", path: "/" });
+  return token;
 }
 
 function clearSession(req, res) {
-  const token = readCookie(req, "sid");
+  const token = readToken(req);
   if (token) sessions.delete(token);
   res.clearCookie("sid", { path: "/" });
+}
+
+function applyCors(req, res) {
+  const origin = String(req.headers.origin || "");
+  if (origin !== "https://oz-786.github.io") return;
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
 }
 
 function nextTag(db) {
@@ -817,8 +833,8 @@ app.post("/api/auth/register", (req, res) => {
     details: `${user.name} (@${user.username}) created an account as ${user.role}.`,
   });
   saveDb(db);
-  if (!actor) setSession(res, user);
-  res.status(201).json({ user: publicUser(user), signedIn: !actor });
+  const token = actor ? "" : setSession(res, user);
+  res.status(201).json({ user: publicUser(user), signedIn: !actor, token });
 });
 
 app.post("/api/auth/login", (req, res) => {
@@ -829,8 +845,8 @@ app.post("/api/auth/login", (req, res) => {
     res.status(401).json({ error: "Username, email, or password is incorrect." });
     return;
   }
-  setSession(res, user);
-  res.json({ user: publicUser(user) });
+  const token = setSession(res, user);
+  res.json({ user: publicUser(user), token });
 });
 
 app.post("/api/auth/forgot", async (req, res) => {
@@ -909,8 +925,8 @@ app.post("/api/auth/reset", (req, res) => {
     details: `${user.name} set a new password with an email code.`,
   });
   saveDb(db);
-  setSession(res, user);
-  res.json({ user: publicUser(user) });
+  const token = setSession(res, user);
+  res.json({ user: publicUser(user), token });
 });
 
 app.post("/api/auth/profile", requireUser, (req, res) => {
@@ -1413,9 +1429,15 @@ function listen(port) {
   const server = http.createServer(async (req, res) => {
     try {
       decorate(res);
+      applyCors(req, res);
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("X-Frame-Options", "SAMEORIGIN");
       res.setHeader("Referrer-Policy", "same-origin");
+      if (req.method === "OPTIONS") {
+        res.statusCode = 204;
+        res.end();
+        return;
+      }
       const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
       req.query = Object.fromEntries(url.searchParams);
       req.params = {};

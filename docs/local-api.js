@@ -2,8 +2,8 @@
 
 // GitHub Pages cannot run the office server. On github.io, keep the same
 // screens and store the record in this browser.
-if (!location.hostname.endsWith("github.io")) {
-  // The office server handles /api there.
+if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
+  // The office record handles /api, including when this page is opened from GitHub.
 } else {
   window.ARIES_LOCAL = true;
   const DB_KEY = "aries-store-db";

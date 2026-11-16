@@ -52,14 +52,23 @@ function esc(value) {
     .replace(/"/g, "&quot;");
 }
 
+function apiRoot() {
+  return window.ARIES_API ? String(window.ARIES_API).replace(/\/$/, "") : "";
+}
+
 async function api(url, options = {}) {
-  const response = await fetch(url, {
+  const headers = {};
+  if (options.body) headers["Content-Type"] = "application/json";
+  const token = sessionStorage.getItem("aries-token");
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${apiRoot()}${url}`, {
     method: options.method || "GET",
-    headers: options.body ? { "Content-Type": "application/json" } : undefined,
-    credentials: "same-origin",
+    headers,
+    credentials: apiRoot() ? "omit" : "same-origin",
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   const data = await response.json().catch(() => ({}));
+  if (data.token) sessionStorage.setItem("aries-token", data.token);
   if (response.status === 401) {
     state.user = null;
     state.modal = null;
@@ -144,7 +153,13 @@ function filteredItems() {
 
 async function downloadExport(kind, event) {
   if (event) event.preventDefault();
-  const response = await fetch(exportHref(kind), { credentials: "same-origin" });
+  const headers = {};
+  const token = sessionStorage.getItem("aries-token");
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${apiRoot()}${exportHref(kind)}`, {
+    credentials: apiRoot() ? "omit" : "same-origin",
+    headers,
+  });
   if (!response.ok) return;
   const blob = await response.blob();
   const link = document.createElement("a");
@@ -209,7 +224,7 @@ function authHtml() {
         <div>
           <h1>Store inventory record</h1>
           <p>A shared list of every tool and other item: quantity, condition, where it is, and who it was handed to.</p>
-          ${window.ARIES_LOCAL ? `<p>This public page keeps a separate copy in this browser, so other people will not see it. Use the office address on the store computer for the shared record.</p>` : `<p>Every staff account sees this same inventory and activity log. The administrator is the only person who manages accounts.</p>`}
+          ${window.ARIES_API ? `<p>This page uses the one office record. Every account sees the same items, activity, and profiles.</p>` : window.ARIES_LOCAL ? `<p>This public page keeps a separate copy in this browser, so other people will not see it.</p>` : `<p>Every staff account sees this same inventory and activity log. The administrator is the only person who manages accounts.</p>`}
           <ul class="auth-points">
             <li>Network equipment, cables, tools, and other stock are kept in one record.</li>
             <li>Every change stores the name of the person who made it.</li>
@@ -347,7 +362,8 @@ function shellHtml() {
 
 function bindShell() {
   document.getElementById("logout").onclick = async () => {
-    await api("/api/auth/logout", { method: "POST" });
+    try { await api("/api/auth/logout", { method: "POST" }); } catch { /* signed out locally */ }
+    sessionStorage.removeItem("aries-token");
     state.user = null;
     state.items = [];
     state.selectedId = null;
@@ -1252,16 +1268,36 @@ document.addEventListener("keydown", (event) => {
 });
 
 setInterval(async () => {
-  if (!state.user || state.modal || state.view !== "inventory") return;
-  if (document.activeElement && document.activeElement.id === "q") return;
+  if (!state.user || state.modal) return;
+  const active = document.activeElement;
+  if (active && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) return;
   try {
-    const previous = state.items.map((item) => `${item.id}:${item.updatedAt}`).join("|");
-    await refreshItems();
-    const next = state.items.map((item) => `${item.id}:${item.updatedAt}`).join("|");
-    if (previous !== next && !state.selectedId) {
-      const y = window.scrollY;
-      renderView();
-      window.scrollTo(0, y);
+    if (state.view === "inventory") {
+      const previous = state.items.map((item) => `${item.id}:${item.updatedAt}`).join("|");
+      await refreshItems();
+      const next = state.items.map((item) => `${item.id}:${item.updatedAt}`).join("|");
+      if (previous !== next && !state.selectedId) {
+        const y = window.scrollY;
+        renderView();
+        window.scrollTo(0, y);
+      }
+    } else if (state.view === "activity") {
+      const previous = state.audit.map((entry) => entry.id).join("|");
+      await refreshAudit();
+      if (previous !== state.audit.map((entry) => entry.id).join("|")) {
+        const y = window.scrollY;
+        renderView();
+        window.scrollTo(0, y);
+      }
+    } else if (state.view === "accounts") {
+      const previous = state.users.map((user) => `${user.id}:${user.email}:${user.phone}:${user.name}`).join("|");
+      await refreshUsers();
+      const next = state.users.map((user) => `${user.id}:${user.email}:${user.phone}:${user.name}`).join("|");
+      if (previous !== next) {
+        const y = window.scrollY;
+        renderView();
+        window.scrollTo(0, y);
+      }
     }
   } catch {
     /* keep the current screen if a refresh fails */
@@ -1274,6 +1310,7 @@ async function boot() {
     state.needsSetup = !!setup.needsSetup;
   } catch {
     state.needsSetup = false;
+    if (window.ARIES_API) state.error = "The shared office record is not reachable. Leave the store computer switched on.";
   }
   try {
     const data = await api("/api/auth/me");
