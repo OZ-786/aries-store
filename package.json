@@ -1,0 +1,10 @@
+{
+  "name": "aries-store",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aries SystemCom store inventory record",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
