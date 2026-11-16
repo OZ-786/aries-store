@@ -971,7 +971,7 @@ const MIME = {
 };
 
 function serveStatic(pathname, res) {
-  const publicRoot = path.resolve(ROOT, "public");
+  const publicRoot = path.resolve(ROOT, "docs");
   const requested = pathname === "/" ? "/index.html" : pathname;
   const file = path.resolve(publicRoot, `.${requested}`);
   if (file !== publicRoot && !file.startsWith(publicRoot + path.sep)) {

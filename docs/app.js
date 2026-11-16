@@ -35,6 +35,12 @@ const state = {
 
 const app = document.getElementById("app");
 
+function asset(file) {
+  const path = location.pathname;
+  if (!path.endsWith("/") && !/\.html$/i.test(path)) return `${path}/${file}`;
+  return `${path.replace(/[^/]*$/, "")}${file}`;
+}
+
 function esc(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -133,6 +139,20 @@ function filteredItems() {
   });
 }
 
+async function downloadExport(kind, event) {
+  if (event) event.preventDefault();
+  const response = await fetch(exportHref(kind), { credentials: "same-origin" });
+  if (!response.ok) return;
+  const blob = await response.blob();
+  const link = document.createElement("a");
+  const match = /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") || "");
+  link.href = URL.createObjectURL(blob);
+  link.download = match ? match[1] : `aries-store-inventory.${kind}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 function exportHref(kind) {
   const params = new URLSearchParams();
   if (state.filters.q.trim()) params.set("q", state.filters.q.trim());
@@ -169,10 +189,11 @@ function authHtml() {
   return `
     <div class="auth-wrap">
       <section class="auth-brand">
-        <img src="/logo.png" alt="Aries SystemCom Tech Engineering Ltd." />
+        <img src="${asset("logo.png")}" alt="Aries SystemCom Tech Engineering Ltd." />
         <div>
           <h1>Store inventory record</h1>
           <p>A shared list of every tool and other item: quantity, condition, where it is, and who it was handed to.</p>
+          ${window.ARIES_LOCAL ? `<p>On this public page, the record stays in this browser.</p>` : ""}
           <ul class="auth-points">
             <li>Network equipment, cables, tools, and other stock are kept in one record.</li>
             <li>Every change stores the name of the person who made it.</li>
@@ -237,7 +258,7 @@ function shellHtml() {
   return `
     <div class="shell">
       <header class="topbar">
-        <img src="/logo.png" alt="Aries SystemCom" />
+        <img src="${asset("logo.png")}" alt="Aries SystemCom" />
         <div class="brand-text">
           <strong>Store inventory</strong>
           <span>Aries SystemCom Tech Engineering Ltd.</span>
@@ -468,7 +489,15 @@ function paintRows() {
   const pdf = document.getElementById("export-pdf");
   if (csv) csv.href = exportHref("csv");
   if (pdf) pdf.href = exportHref("pdf");
+  bindExports();
   bindRowClicks();
+}
+
+function bindExports() {
+  const csv = document.getElementById("export-csv");
+  const pdf = document.getElementById("export-pdf");
+  if (csv) csv.onclick = (event) => downloadExport("csv", event);
+  if (pdf) pdf.onclick = (event) => downloadExport("pdf", event);
 }
 
 function bindView() {
@@ -521,6 +550,7 @@ function bindView() {
   const sites = document.getElementById("layout-sites");
   if (list) list.onclick = () => { state.layout = "list"; draw(); };
   if (sites) sites.onclick = () => { state.layout = "sites"; draw(); };
+  bindExports();
   bindRowClicks();
   bindDrawer();
   bindModal();
