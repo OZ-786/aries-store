@@ -349,6 +349,8 @@ tr.just-added td { background: #fff1dc; }
 .activity { display: grid; grid-template-columns: 150px 1fr; gap: 8px 16px; }
 .activity time { color: var(--muted); font-size: 13px; }
 .account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+.manage { margin-top: 12px; }
+.person .btn.danger { margin-top: 8px; }
 .panel {
   background: var(--card);
   border: 1px solid var(--line);

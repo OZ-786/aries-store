@@ -212,70 +212,86 @@ if (!location.hostname.endsWith("github.io")) {
     return String(value ?? "").replace(/[^\x20-\x7e]/g, "?").replace(/[\\()]/g, (char) => `\\${char}`);
   }
 
-  function buildPdf(items, subtitle, summary) {
+  function buildPdf(items, subtitle) {
     const pages = [];
     let commands = [];
     let y = 800;
+    const left = 40;
+    const right = 555;
     function page() {
       if (commands.length) pages.push(commands);
       commands = [];
       y = 800;
-      commands.push(`BT /F2 14 Tf 40 ${y} Td (${pdfEscape("ARIES SYSTEMCOM")}) Tj ET`);
+      commands.push("0.94 0.48 0.05 rg");
+      commands.push(`${left} ${y - 6} 18 18 re f`);
+      commands.push(`BT /F2 13 Tf ${left + 26} ${y} Td (${pdfEscape("ARIES SYSTEMCOM")}) Tj ET`);
       y -= 16;
-      commands.push(`BT /F1 9 Tf 40 ${y} Td (${pdfEscape("Store inventory record  ·  RC 680979")}) Tj ET`);
-      y -= 28;
+      commands.push(`BT /F1 9 Tf ${left + 26} ${y} Td (${pdfEscape("Tech Engineering Ltd.  ·  RC 680979  ·  Store inventory record")}) Tj ET`);
+      y -= 14;
+      commands.push(`0.94 0.48 0.05 RG 1 w ${left} ${y} m ${right} ${y} l S`);
+      y -= 22;
+    }
+    function textAt(text, x, size, bold) {
+      commands.push(`BT ${bold ? "/F2" : "/F1"} ${size} Tf ${x} ${y} Td (${pdfEscape(text)}) Tj ET`);
     }
     function line(text, size = 10, bold = false) {
-      if (y < 60) page();
-      commands.push(`BT ${bold ? "/F2" : "/F1"} ${size} Tf 40 ${y} Td (${pdfEscape(text)}) Tj ET`);
+      if (y < 70) page();
+      textAt(text, left, size, bold);
       y -= size + 6;
     }
-    function bars(title, pairs, color) {
-      line(title, 11, true);
-      const max = Math.max(1, ...pairs.map((pair) => pair[1]));
-      if (!pairs.length) {
-        line("None", 9);
-        return;
-      }
-      for (const [label, value] of pairs.slice(0, 6)) {
-        if (y < 60) page();
-        const width = Math.max(4, Math.round((value / max) * 180));
-        commands.push(`BT /F1 9 Tf 40 ${y} Td (${pdfEscape(String(label).slice(0, 22))}) Tj ET`);
-        commands.push(`${color} rg`);
-        commands.push(`${190} ${y - 2} ${width} 9 re f`);
-        commands.push(`0.2 0.2 0.2 rg`);
-        commands.push(`BT /F1 9 Tf ${200 + width} ${y} Td (${pdfEscape(String(value))}) Tj ET`);
-        y -= 16;
-      }
-    }
     page();
+    line("Store inventory record", 16, true);
     line(subtitle, 9);
-    line(`${items.length} item${items.length === 1 ? "" : "s"}  ·  ${summary ? summary.label : "All dates"}`, 9);
-    if (summary) {
-      line("Summary", 13, true);
-      line(`${summary.count} items   ${summary.quantity} quantity   ${summary.inStore} in store   ${summary.issued} issued to site`);
-      line(`${summary.missing} missing   ${summary.attention} poor, damaged, or missing   ${summary.overdue} overdue returns   ${summary.changes} changes`);
-      const tally = (key) => {
-        const map = new Map();
-        for (const item of items) map.set(item[key] || "—", (map.get(item[key] || "—") || 0) + 1);
-        return [...map.entries()].sort((a, b) => b[1] - a[1]);
-      };
-      bars("Items by section", tally("section"), "0.94 0.48 0.05");
-      bars("Items by status", tally("status"), "0.12 0.32 0.55");
-      bars("Items by condition", tally("condition"), "0.12 0.45 0.28");
-      line("Item records", 13, true);
-    }
-    y -= 8;
+    line(`${items.length} item${items.length === 1 ? "" : "s"}`, 9);
+    y -= 6;
     if (!items.length) line("No items match this export.");
+    const rowsFor = (item) => [
+      ["Tag", item.tag || "—", "Section", item.section || "—"],
+      ["Item", item.name || "—", "Quantity", `${item.quantity} ${item.unit}`],
+      ["Condition", item.condition || "—", "Status", item.status || "—"],
+      ["Store location", item.storeLocation || "—", "Serial number", item.serialNumber || "—"],
+      ["Company", item.companyName || "—", "Client location", item.clientLocation || "—"],
+      ["Handed to", item.handedTo || "—", "Phone", item.handedToPhone || "—"],
+      ["Issued on", item.issuedOn || "—", "Expected return", item.expectedReturn || "—"],
+      ["Recorded by", item.updatedByName || "—", "Updated", item.updatedAt || "—"],
+    ];
+    let lastGroup = "";
     for (const item of items) {
-      line(`${item.tag}  ${item.name}`, 12, true);
-      line(`${item.section}   ${item.quantity} ${item.unit}   ${item.condition}   ${item.status}`);
-      line(`Store: ${item.storeLocation || "—"}    Serial: ${item.serialNumber || "—"}`);
-      line(`Company: ${item.companyName || "—"}`);
-      line(`Client location: ${item.clientLocation || "—"}`);
-      line(`Handed to: ${item.handedTo || "—"}    Phone: ${item.handedToPhone || "—"}`);
-      line(`Updated by ${item.updatedByName || "—"}`);
-      y -= 8;
+      const group = item.companyName || item.clientLocation
+        ? `${item.companyName || "Company not set"} — ${item.clientLocation || "Location not set"}`
+        : "In the store";
+      if (group !== lastGroup) {
+        if (y < 90) page();
+        y -= 8;
+        commands.push(`0.09 0.09 0.09 rg ${left} ${y - 5} ${right - left} 18 re f`);
+        commands.push("1 1 1 rg");
+        textAt(group.slice(0, 78), left + 8, 10, true);
+        y -= 24;
+        lastGroup = group;
+      }
+      const rows = rowsFor(item);
+      const height = 16 + rows.length * 14 + (item.notes ? 16 : 0);
+      if (y - height < 54) page();
+      const bottom = y - height + 8;
+      commands.push(`0.97 0.96 0.94 rg ${left} ${bottom} ${right - left} ${y - bottom + 6} re f`);
+      commands.push(`0.94 0.48 0.05 rg ${left} ${bottom} 3 ${y - bottom + 6} re f`);
+      for (const row of rows) {
+        commands.push("0.42 0.42 0.42 rg");
+        textAt(String(row[0]).slice(0, 18), left + 10, 8, false);
+        textAt(String(row[2]).slice(0, 18), left + 292, 8, false);
+        commands.push("0.1 0.1 0.1 rg");
+        textAt(String(row[1]).replace(/\s+/g, " ").slice(0, 28), left + 112, 9, false);
+        textAt(String(row[3]).replace(/\s+/g, " ").slice(0, 24), left + 404, 9, false);
+        y -= 14;
+      }
+      if (item.notes) {
+        commands.push("0.42 0.42 0.42 rg");
+        textAt("Notes", left + 10, 8, false);
+        commands.push("0.1 0.1 0.1 rg");
+        textAt(String(item.notes).replace(/\s+/g, " ").slice(0, 70), left + 112, 9, false);
+        y -= 14;
+      }
+      y = bottom - 8;
     }
     if (commands.length) pages.push(commands);
     const objects = [];
@@ -391,6 +407,7 @@ if (!location.hostname.endsWith("github.io")) {
       if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) return json(400, { error: "Username must be 3–32 characters: letters, numbers, dots, or dashes." });
       if (password.length < 6) return json(400, { error: "Password must be at least 6 characters." });
       if (db.users.some((entry) => entry.username === username)) return json(400, { error: "That username is already in use." });
+      if (user && user.role !== "admin") return json(403, { error: "Only an administrator can create an account." });
       if (contact.email && db.users.some((entry) => entry.email === contact.email)) return json(400, { error: "That company email is already on an account." });
       const created = { id: crypto.randomUUID(), name, username, email: contact.email, phone: contact.phone, passwordHash: await hashPassword(password), role: db.users.length === 0 ? "admin" : "staff", createdAt: new Date().toISOString() };
       db.users.push(created);
@@ -457,6 +474,26 @@ if (!location.hostname.endsWith("github.io")) {
       return json(200, { users: db.users.map(publicUser).sort((a, b) => a.name.localeCompare(b.name)), resets });
     }
     const setPassword = path.match(/^\/api\/users\/([^/]+)\/password$/);
+    const manageUser = path.match(/^\/api\/users\/([^/]+)$/);
+    if (manageUser && method === "PUT") {
+      if (user.role !== "admin") return json(403, { error: "Only an administrator can update an account." });
+      const target = db.users.find((entry) => entry.id === decodeURIComponent(manageUser[1]));
+      if (!target) return json(404, { error: "Account not found." });
+      const name = clean(body.name, 80);
+      const contact = readContact(body);
+      const role = body.role === "admin" ? "admin" : "staff";
+      if (contact.error) return json(400, { error: contact.error });
+      if (name.length < 2) return json(400, { error: "Enter the person's full name." });
+      if (contact.email && db.users.some((entry) => entry.email === contact.email && entry.id !== target.id)) return json(400, { error: "That company email is already on an account." });
+      if (target.role === "admin" && role !== "admin" && db.users.filter((entry) => entry.role === "admin").length === 1) return json(400, { error: "Keep at least one administrator." });
+      target.name = name;
+      target.email = contact.email;
+      target.phone = contact.phone;
+      target.role = role;
+      addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated the account ${target.name} (@${target.username}) as ${target.role}.` });
+      saveDb(db);
+      return json(200, { user: publicUser(target) });
+    }
     if (setPassword && method === "POST") {
       if (user.role !== "admin") return json(403, { error: "Only an administrator can set another person's password." });
       if (String(body.password || "").length < 6) return json(400, { error: "New password must be at least 6 characters." });
@@ -545,7 +582,7 @@ if (!location.hostname.endsWith("github.io")) {
       const summary = reportSummary(items, db.audit, range);
       const stamp = new Date().toISOString().slice(0, 10);
       if (path.endsWith("/csv")) return fileResponse(buildCsv(items, summary), "text/csv; charset=utf-8", `aries-store-inventory-${stamp}.csv`);
-      const pdf = buildPdf(items, `Prepared by ${user.name}  ·  ${summary.label}`, summary);
+      const pdf = buildPdf(items, `Prepared by ${user.name}  ·  ${summary.label}`);
       return fileResponse(pdf, "application/pdf", `aries-store-inventory-${stamp}.pdf`);
     }
     return json(404, { error: "Not found." });

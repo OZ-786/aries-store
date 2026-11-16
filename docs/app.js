@@ -212,7 +212,7 @@ function authHtml() {
           <ul class="auth-points">
             <li>Network equipment, cables, tools, and other stock are kept in one record.</li>
             <li>Every change stores the name of the person who made it.</li>
-            <li>Export a month, a year, or a custom range, with a summary and charts.</li>
+            <li>Export a month, a year, or a custom range as a formal record.</li>
           </ul>
         </div>
       </section>
@@ -1040,7 +1040,7 @@ function accountsHtml() {
     ${state.notice ? `<div class="notice" style="margin-bottom:12px">${esc(state.notice)}</div>` : ""}
     ${pending.length ? `<div class="banner">${pending.length} password reset${pending.length === 1 ? "" : "s"} waiting. Set a new password on that account if mail did not send a code.</div>` : ""}
     <div class="account-grid">
-      <form class="panel" id="create-account">
+      ${state.user.role === "admin" ? `<form class="panel" id="create-account">
         <h3>Create account</h3>
         <div class="form-grid">
           <label>Full name<input name="name" required placeholder="Person's real name" /></label>
@@ -1050,7 +1050,7 @@ function accountsHtml() {
           <label>Password<input name="password" type="password" required minlength="6" /></label>
           <button class="btn primary" type="submit">Create account</button>
         </div>
-      </form>
+      </form>` : ""}
       <form class="panel" id="profile-form">
         <h3>Your contact</h3>
         <p class="lede">Signed in as ${esc(state.user.name)} (@${esc(state.user.username)}). Add a company email here if the account was created without one.</p>
@@ -1069,25 +1069,46 @@ function accountsHtml() {
         </div>
       </form>
     </div>
+    <h3 style="margin:8px 0">People</h3>
     <div class="cards">
       ${state.users
-        .map(
-          (user) => `<article class="person">
+        .map((user) => {
+          const self = user.id === state.user.id;
+          const manage = state.user.role === "admin";
+          return `<article class="person">
             <strong>${esc(user.name)}</strong>
             <span class="badge ${user.role === "admin" ? "orange" : ""}">${esc(user.role)}</span>
             <span class="sub">@${esc(user.username)}${user.email ? ` · ${esc(user.email)}` : " · no company email"}${user.phone ? ` · ${esc(user.phone)}` : ""}</span>
-            <span class="sub">Joined ${esc(stamp(user.createdAt))}</span>
-            ${state.user.role === "admin" && user.id !== state.user.id ? `<form class="form-grid" data-set-password="${user.id}" style="margin-top:8px"><input name="password" type="password" minlength="6" placeholder="New password" required /><button class="btn small" type="submit">Set password</button></form><div style="margin-top:8px"><button class="btn small danger" data-remove="${user.id}">Remove account</button></div>` : ""}
-          </article>`
-        )
+            <span class="sub">Joined ${esc(stamp(user.createdAt))}${self ? " · this is your account" : ""}</span>
+            ${manage ? `<form class="manage" data-manage="${user.id}">
+              <div class="form-grid">
+                <label>Full name<input name="name" value="${esc(user.name)}" required /></label>
+                <label>Company email<input name="email" type="email" value="${esc(user.email || "")}" placeholder="optional" /></label>
+                <label>Phone<input name="phone" value="${esc(user.phone || "")}" placeholder="optional" /></label>
+                <label>Role<select name="role">
+                  <option value="staff" ${user.role === "staff" ? "selected" : ""}>Staff</option>
+                  <option value="admin" ${user.role === "admin" ? "selected" : ""}>Administrator</option>
+                </select></label>
+                <button class="btn small" type="submit">Save account</button>
+              </div>
+            </form>
+            ${self ? "" : `<form class="manage" data-set-password="${user.id}">
+              <div class="form-grid">
+                <label>New password<input name="password" type="password" minlength="6" required placeholder="At least 6 characters" /></label>
+                <button class="btn small" type="submit">Reset password</button>
+              </div>
+            </form>
+            <button class="btn small danger" data-remove="${user.id}">Remove account</button>`}` : ""}
+          </article>`;
+        })
         .join("")}
     </div>`;
 }
 
 function bindAccounts() {
   const create = document.getElementById("create-account");
-  if (!create) return;
-  create.onsubmit = async (event) => {
+  if (!document.getElementById("profile-form")) return;
+  if (create) create.onsubmit = async (event) => {
     event.preventDefault();
     const form = new FormData(event.target);
     state.error = "";
@@ -1147,6 +1168,27 @@ function bindAccounts() {
       draw();
     }
   };
+  document.querySelectorAll("[data-manage]").forEach((form) => {
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const person = state.users.find((entry) => entry.id === form.dataset.manage);
+      try {
+        const saved = await api(`/api/users/${form.dataset.manage}`, {
+          method: "PUT",
+          body: { name: data.get("name"), email: data.get("email"), phone: data.get("phone"), role: data.get("role") },
+        });
+        if (saved.user.id === state.user.id) state.user = saved.user;
+        state.notice = `Account updated for ${person ? person.name : saved.user.name}.`;
+        state.error = "";
+        await refreshUsers();
+        draw();
+      } catch (error) {
+        state.error = error.message;
+        draw();
+      }
+    };
+  });
   document.querySelectorAll("[data-set-password]").forEach((form) => {
     form.onsubmit = async (event) => {
       event.preventDefault();

@@ -534,46 +534,22 @@ function buildPdf(items, meta) {
   newPage();
   writeLine("Store inventory record", 16, true, [0.09, 0.09, 0.09], 6);
   writeLine(meta.subtitle, 9, false, [0.28, 0.28, 0.28], 4);
-  writeLine(`${items.length} item${items.length === 1 ? "" : "s"}  ·  ${meta.summary ? meta.summary.label : "All dates"}`, 9, false, [0.28, 0.28, 0.28], 12);
-
-  if (meta.summary) {
-    const summary = meta.summary;
-    writeLine("Summary", 13, true, [0.09, 0.09, 0.09], 8);
-    writeLine(`${summary.count} items   ·   ${summary.quantity} quantity   ·   ${summary.inStore} in store   ·   ${summary.issued} issued to site`, 10, false, [0.15, 0.15, 0.15], 6);
-    writeLine(`${summary.missing} missing   ·   ${summary.attention} poor, damaged, or missing   ·   ${summary.overdue} overdue returns   ·   ${summary.changes} changes in this period`, 10, false, [0.15, 0.15, 0.15], 12);
-    const drawBars = (title, pairs, color) => {
-      writeLine(title, 11, true, [0.09, 0.09, 0.09], 8);
-      const max = Math.max(1, ...pairs.map((pair) => pair[1]));
-      if (!pairs.length) {
-        writeLine("None", 9, false, [0.4, 0.4, 0.4], 8);
-        return;
-      }
-      for (const [label, value] of pairs.slice(0, 6)) {
-        ensure(18);
-        ops.push(["color", 0.15, 0.15, 0.15]);
-        ops.push(["text", String(label).slice(0, 22), left, y, 9, false]);
-        const width = Math.max(4, Math.round((value / max) * 220));
-        ops.push(["color", ...color]);
-        ops.push(["rect", left + 140, y - 2, width, 9]);
-        ops.push(["color", 0.25, 0.25, 0.25]);
-        ops.push(["text", String(value), left + 148 + width, y, 9, false]);
-        y -= 16;
-      }
-      y -= 4;
-    };
-    const tally = (key) => {
-      const map = new Map();
-      for (const item of items) map.set(item[key] || "—", (map.get(item[key] || "—") || 0) + 1);
-      return [...map.entries()].sort((a, b) => b[1] - a[1]);
-    };
-    drawBars("Items by section", tally("section"), [0.94, 0.48, 0.05]);
-    drawBars("Items by status", tally("status"), [0.12, 0.32, 0.55]);
-    drawBars("Items by condition", tally("condition"), [0.12, 0.45, 0.28]);
-    writeLine("Item records", 13, true, [0.09, 0.09, 0.09], 10);
-  }
+  writeLine(`${items.length} item${items.length === 1 ? "" : "s"}`, 9, false, [0.28, 0.28, 0.28], 14);
 
   if (!items.length) {
     writeLine("No items match this export.", 11, false, [0.2, 0.2, 0.2], 8);
+  }
+
+  const labelX = left + 10;
+  const valueX = left + 112;
+  const labelX2 = left + 292;
+  const valueX2 = left + 404;
+  const valueWidth = labelX2 - valueX - 14;
+  const valueWidth2 = right - valueX2 - 10;
+
+  function fieldLines(value, width) {
+    const text = String(value ?? "").replace(/\s+/g, " ").trim() || "—";
+    return wrapText(text, 9, width).slice(0, 2);
   }
 
   let lastGroup = null;
@@ -582,56 +558,65 @@ function buildPdf(items, meta) {
       ? `${item.companyName || "Company not set"} — ${item.clientLocation || "Location not set"}`
       : "In the store";
     if (group !== lastGroup) {
-      ensure(36);
-      y -= 6;
+      ensure(34);
+      y -= 8;
       ops.push(["color", 0.09, 0.09, 0.09]);
-      ops.push(["rect", left, y - 4, contentWidth, 18]);
+      ops.push(["rect", left, y - 5, contentWidth, 18]);
       ops.push(["color", 1, 1, 1]);
       ops.push(["text", group, left + 8, y, 10, true]);
-      y -= 22;
+      y -= 24;
       lastGroup = group;
     }
 
-    const rows = [
+    const pairs = [
       ["Tag", item.tag, "Section", item.section],
       ["Item", item.name, "Quantity", `${item.quantity} ${item.unit}`],
       ["Condition", item.condition, "Status", item.status],
-      ["Store location", item.storeLocation || "—", "Serial", item.serialNumber || "—"],
+      ["Store location", item.storeLocation || "—", "Serial number", item.serialNumber || "—"],
       ["Company", item.companyName || "—", "Client location", item.clientLocation || "—"],
       ["Handed to", item.handedTo || "—", "Phone", item.handedToPhone || "—"],
       ["Issued on", item.issuedOn || "—", "Expected return", item.expectedReturn || "—"],
       ["Recorded by", item.updatedByName || "—", "Updated", formatStamp(item.updatedAt)],
-    ];
+    ].map((row) => ({
+      label: row[0],
+      lines: fieldLines(row[1], valueWidth),
+      label2: row[2],
+      lines2: fieldLines(row[3], valueWidth2),
+    }));
+    const noteLines = item.notes ? wrapText(item.notes, 9, contentWidth - 122).slice(0, 4) : [];
+    const rowGap = 13;
+    let blockHeight = 12;
+    for (const pair of pairs) blockHeight += Math.max(pair.lines.length, pair.lines2.length) * rowGap;
+    if (noteLines.length) blockHeight += noteLines.length * rowGap;
+    blockHeight += 8;
 
-    ensure(28 + rows.length * 14 + (item.notes ? 28 : 8));
-    ops.push(["color", 0.96, 0.95, 0.93]);
-    const blockTop = y + 12;
-    ops.push(["text", "", left, y, 9, false]);
-    for (const row of rows) {
-      ops.push(["color", 0.4, 0.4, 0.4]);
-      ops.push(["text", row[0], left + 8, y, 8, false]);
+    ensure(blockHeight + 6);
+    const bottom = y - blockHeight + 10;
+    ops.push(["color", 0.97, 0.96, 0.94]);
+    ops.push(["rect", left, bottom, contentWidth, y - bottom + 8]);
+    ops.push(["color", 0.94, 0.48, 0.05]);
+    ops.push(["rect", left, bottom, 3, y - bottom + 8]);
+
+    for (const pair of pairs) {
+      const lines = Math.max(pair.lines.length, pair.lines2.length);
+      ops.push(["color", 0.42, 0.42, 0.42]);
+      ops.push(["text", pair.label, labelX, y, 8, false]);
+      ops.push(["text", pair.label2, labelX2, y, 8, false]);
       ops.push(["color", 0.1, 0.1, 0.1]);
-      ops.push(["text", String(row[1]).slice(0, 32), left + 78, y, 9, false]);
-      ops.push(["color", 0.4, 0.4, 0.4]);
-      ops.push(["text", row[2], left + 270, y, 8, false]);
-      ops.push(["color", 0.1, 0.1, 0.1]);
-      ops.push(["text", String(row[3]).slice(0, 28), left + 360, y, 9, false]);
-      y -= 13;
+      pair.lines.forEach((line, index) => ops.push(["text", line, valueX, y - index * rowGap, 9, false]));
+      pair.lines2.forEach((line, index) => ops.push(["text", line, valueX2, y - index * rowGap, 9, false]));
+      y -= lines * rowGap;
     }
-    if (item.notes) {
-      const noteLines = wrapText(item.notes, 9, contentWidth - 90).slice(0, 4);
-      ops.push(["color", 0.4, 0.4, 0.4]);
-      ops.push(["text", "Notes", left + 8, y, 8, false]);
+    if (noteLines.length) {
+      ops.push(["color", 0.42, 0.42, 0.42]);
+      ops.push(["text", "Notes", labelX, y, 8, false]);
       ops.push(["color", 0.1, 0.1, 0.1]);
       for (const line of noteLines) {
-        ops.push(["text", line, left + 78, y, 9, false]);
-        y -= 12;
+        ops.push(["text", line, valueX, y, 9, false]);
+        y -= rowGap;
       }
     }
-    y -= 8;
-    ops.push(["color", 0.85, 0.83, 0.8]);
-    ops.push(["line", left, y + 4, right, y + 4]);
-    void blockTop;
+    y = bottom - 8;
   }
 
   if (ops.length) pages.push(ops);
@@ -756,6 +741,10 @@ app.get("/api/auth/me", (req, res) => {
 app.post("/api/auth/register", (req, res) => {
   const db = loadDb();
   const actor = currentUser(req, db);
+  if (actor && actor.role !== "admin") {
+    res.status(403).json({ error: "Only an administrator can create an account." });
+    return;
+  }
   const name = clean(req.body?.name, 80);
   const username = clean(req.body?.username, 32).toLowerCase();
   const password = String(req.body?.password || "");
@@ -996,6 +985,53 @@ app.post("/api/users/:id/password", requireUser, (req, res) => {
   });
   saveDb(req.db);
   res.json({ ok: true });
+});
+
+app.put("/api/users/:id", requireUser, (req, res) => {
+  if (req.user.role !== "admin") {
+    res.status(403).json({ error: "Only an administrator can update an account." });
+    return;
+  }
+  const user = req.db.users.find((entry) => entry.id === req.params.id);
+  if (!user) {
+    res.status(404).json({ error: "Account not found." });
+    return;
+  }
+  const name = clean(req.body?.name, 80);
+  const contact = readContact(req.body);
+  const role = req.body?.role === "admin" ? "admin" : "staff";
+  if (contact.error) {
+    res.status(400).json({ error: contact.error });
+    return;
+  }
+  if (name.length < 2) {
+    res.status(400).json({ error: "Enter the person's full name." });
+    return;
+  }
+  if (contact.email && req.db.users.some((entry) => entry.email === contact.email && entry.id !== user.id)) {
+    res.status(400).json({ error: "That company email is already on an account." });
+    return;
+  }
+  if (user.role === "admin" && role !== "admin" && req.db.users.filter((entry) => entry.role === "admin").length === 1) {
+    res.status(400).json({ error: "Keep at least one administrator." });
+    return;
+  }
+  user.name = name;
+  user.email = contact.email;
+  user.phone = contact.phone;
+  user.role = role;
+  if (req.user.id === user.id) req.user.name = name;
+  addAudit(req.db, {
+    userId: req.user.id,
+    userName: req.user.name,
+    action: "account",
+    itemId: "",
+    tag: "",
+    itemName: "",
+    details: `${req.user.name} updated the account ${user.name} (@${user.username}) as ${user.role}.`,
+  });
+  saveDb(req.db);
+  res.json({ user: publicUser(user) });
 });
 
 app.delete("/api/users/:id", requireUser, (req, res) => {
@@ -1249,7 +1285,6 @@ app.get("/api/export/pdf", requireUser, (req, res) => {
   if (req.query.review === "1") filters.push(`Not updated in ${REVIEW_DAYS} days`);
   const pdf = buildPdf(items, {
     subtitle: `Prepared by ${req.user.name} on ${formatStamp(new Date().toISOString())}  ·  ${filters.join(" · ")}`,
-    summary,
   });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="aries-store-inventory-${stamp}.pdf"`);
