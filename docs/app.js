@@ -245,13 +245,15 @@ function authHtml() {
             ${mode === "login" ? `<label>Username or company email<input name="username" autocomplete="username" required /></label>
             <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="6" /></label>` : ""}
             ${mode === "register" ? `<label>Username<input name="username" autocomplete="username" required placeholder="adaeze" /></label>
+            <label>Password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>
+            <label class="reenter">Re-enter password<input name="confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="Type the password again" /></label>
             <label>Company email <span class="sub">optional</span><input name="email" type="email" autocomplete="email" placeholder="name@company.com" /></label>
-            <label>Phone <span class="sub">optional</span><input name="phone" autocomplete="tel" placeholder="0800 000 0000" /></label>
-            <label>Password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>` : ""}
+            <label>Phone <span class="sub">optional</span><input name="phone" autocomplete="tel" placeholder="0800 000 0000" /></label>` : ""}
             ${mode === "forgot" ? `<label>Company email<input name="email" type="email" autocomplete="email" required placeholder="name@company.com" /></label>` : ""}
             ${mode === "reset" ? `<label>Company email<input name="email" type="email" required value="${esc(state.resetEmail)}" /></label>
             <label>Reset code<input name="code" inputmode="numeric" required placeholder="6 digits" /></label>
-            <label>New password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>` : ""}
+            <label>New password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>
+            <label class="reenter">Re-enter password<input name="confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="Type the password again" /></label>` : ""}
             <button class="btn primary" type="submit">${mode === "register" ? "Create account" : mode === "forgot" ? "Send reset" : mode === "reset" ? "Set new password" : "Sign in"}</button>
             ${mode === "login" ? `<button class="linkish" type="button" id="forgot-auth">Forgot password</button>` : ""}
             ${mode === "login" || mode === "register" ? `<button class="linkish" type="button" id="switch-auth">${mode === "register" ? "I already have an account" : "Create an account"}</button>` : ""}
@@ -295,6 +297,11 @@ function bindAuth() {
         state.user = data.user;
         await refreshItems();
       } else if (state.authMode === "register") {
+        if (form.get("password") !== form.get("confirm")) {
+          state.error = "The two passwords do not match.";
+          draw();
+          return;
+        }
         const data = await api("/api/auth/register", {
           method: "POST",
           body: {
@@ -303,6 +310,7 @@ function bindAuth() {
             email: form.get("email"),
             phone: form.get("phone"),
             password: form.get("password"),
+            confirm: form.get("confirm"),
           },
         });
         state.user = data.user;
@@ -315,9 +323,14 @@ function bindAuth() {
         draw();
         return;
       } else {
+        if (form.get("password") !== form.get("confirm")) {
+          state.error = "The two passwords do not match.";
+          draw();
+          return;
+        }
         const data = await api("/api/auth/reset", {
           method: "POST",
-          body: { email: form.get("email"), code: form.get("code"), password: form.get("password") },
+          body: { email: form.get("email"), code: form.get("code"), password: form.get("password"), confirm: form.get("confirm") },
         });
         state.user = data.user;
         await refreshItems();
@@ -1064,9 +1077,10 @@ function accountsHtml() {
         <div class="form-grid">
           <label>Full name<input name="name" required placeholder="Person's real name" /></label>
           <label>Username<input name="username" required placeholder="letters and numbers" /></label>
+          <label>Password<input name="password" type="password" required minlength="6" /></label>
+          <label class="reenter">Re-enter password<input name="confirm" type="password" required minlength="6" placeholder="Type the password again" /></label>
           <label>Company email <span class="sub">optional</span><input name="email" type="email" placeholder="name@company.com" /></label>
           <label>Phone <span class="sub">optional</span><input name="phone" placeholder="0800 000 0000" /></label>
-          <label>Password<input name="password" type="password" required minlength="6" /></label>
           <button class="btn primary" type="submit">Create account</button>
         </div>
       </form>` : ""}
@@ -1084,6 +1098,7 @@ function accountsHtml() {
         <div class="form-grid">
           <label>Current password<input name="current" type="password" required /></label>
           <label>New password<input name="next" type="password" required minlength="6" /></label>
+          <label class="reenter">Re-enter password<input name="confirm" type="password" required minlength="6" placeholder="Type the new password again" /></label>
           <button class="btn ghost" type="submit">Change password</button>
         </div>
       </form>
@@ -1111,6 +1126,7 @@ function accountsHtml() {
             ${self ? "" : `<form class="manage" data-set-password="${user.id}">
               <div class="form-grid">
                 <label>New password<input name="password" type="password" minlength="6" required placeholder="At least 6 characters" /></label>
+                <label class="reenter">Re-enter password<input name="confirm" type="password" minlength="6" required placeholder="Type the password again" /></label>
                 <button class="btn small" type="submit">Reset password</button>
               </div>
             </form>
@@ -1129,6 +1145,11 @@ function bindAccounts() {
     const form = new FormData(event.target);
     state.error = "";
     state.notice = "";
+    if (form.get("password") !== form.get("confirm")) {
+      state.error = "The two passwords do not match.";
+      draw();
+      return;
+    }
     try {
       await api("/api/auth/register", {
         method: "POST",
@@ -1138,6 +1159,7 @@ function bindAccounts() {
           email: form.get("email"),
           phone: form.get("phone"),
           password: form.get("password"),
+          confirm: form.get("confirm"),
         },
       });
       state.notice = "Account created. They can sign in with that username or company email.";
@@ -1172,10 +1194,15 @@ function bindAccounts() {
     const form = new FormData(event.target);
     state.error = "";
     state.notice = "";
+    if (form.get("next") !== form.get("confirm")) {
+      state.error = "The two passwords do not match.";
+      draw();
+      return;
+    }
     try {
       await api("/api/auth/password", {
         method: "POST",
-        body: { current: form.get("current"), next: form.get("next") },
+        body: { current: form.get("current"), next: form.get("next"), confirm: form.get("confirm") },
       });
       state.notice = "Password changed.";
       draw();
@@ -1208,10 +1235,17 @@ function bindAccounts() {
   document.querySelectorAll("[data-set-password]").forEach((form) => {
     form.onsubmit = async (event) => {
       event.preventDefault();
-      const password = new FormData(form).get("password");
+      const data = new FormData(form);
+      const password = data.get("password");
       const person = state.users.find((entry) => entry.id === form.dataset.setPassword);
+      if (password !== data.get("confirm")) {
+        state.error = "The two passwords do not match.";
+        state.notice = "";
+        draw();
+        return;
+      }
       try {
-        await api(`/api/users/${form.dataset.setPassword}/password`, { method: "POST", body: { password } });
+        await api(`/api/users/${form.dataset.setPassword}/password`, { method: "POST", body: { password, confirm: data.get("confirm") } });
         state.notice = `New password set for ${person ? person.name : "that account"}.`;
         state.error = "";
         await refreshUsers();

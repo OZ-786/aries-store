@@ -504,6 +504,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       if (name.length < 2) return json(400, { error: "Enter the person's full name. It is recorded on every change." });
       if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) return json(400, { error: "Username must be 3–32 characters: letters, numbers, dots, or dashes." });
       if (password.length < 6) return json(400, { error: "Password must be at least 6 characters." });
+      if (password !== String(body.confirm || "")) return json(400, { error: "The two passwords do not match." });
       if (db.users.some((entry) => entry.username === username)) return json(400, { error: "That username is already in use." });
       if (user && user.role !== "admin") return json(403, { error: "Only the administrator can create a staff account." });
       if (contact.email && db.users.some((entry) => entry.email === contact.email)) return json(400, { error: "That company email is already on an account." });
@@ -551,6 +552,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     if (method === "POST" && path === "/api/auth/password") {
       if (!(await verifyPassword(String(body.current || ""), user.passwordHash))) return json(400, { error: "Current password is incorrect." });
       if (String(body.next || "").length < 6) return json(400, { error: "New password must be at least 6 characters." });
+      if (String(body.next) !== String(body.confirm || "")) return json(400, { error: "The two passwords do not match." });
       user.passwordHash = await hashPassword(String(body.next));
       await saveDb(db);
       return json(200, { ok: true });
@@ -593,6 +595,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     if (setPassword && method === "POST") {
       if (user.role !== "admin") return json(403, { error: "Only an administrator can set another person's password." });
       if (String(body.password || "").length < 6) return json(400, { error: "New password must be at least 6 characters." });
+      if (String(body.password) !== String(body.confirm || "")) return json(400, { error: "The two passwords do not match." });
       const target = db.users.find((entry) => entry.id === decodeURIComponent(setPassword[1]));
       if (!target) return json(404, { error: "Account not found." });
       target.passwordHash = await hashPassword(String(body.password));

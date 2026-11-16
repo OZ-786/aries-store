@@ -909,6 +909,10 @@ app.post("/api/auth/register", (req, res) => {
     res.status(400).json({ error: "Password must be at least 6 characters." });
     return;
   }
+  if (password !== String(req.body?.confirm || "")) {
+    res.status(400).json({ error: "The two passwords do not match." });
+    return;
+  }
   if (db.users.some((user) => user.username === username)) {
     res.status(400).json({ error: "That username is already in use." });
     return;
@@ -1018,6 +1022,10 @@ app.post("/api/auth/reset", (req, res) => {
     res.status(400).json({ error: "New password must be at least 6 characters." });
     return;
   }
+  if (next !== String(req.body?.confirm || "")) {
+    res.status(400).json({ error: "The two passwords do not match." });
+    return;
+  }
   user.passwordHash = hashPassword(next);
   reset.status = "used";
   addAudit(db, {
@@ -1075,6 +1083,10 @@ app.post("/api/auth/password", requireUser, (req, res) => {
     res.status(400).json({ error: "New password must be at least 6 characters." });
     return;
   }
+  if (next !== String(req.body?.confirm || "")) {
+    res.status(400).json({ error: "The two passwords do not match." });
+    return;
+  }
   req.user.passwordHash = hashPassword(next);
   saveDb(req.db);
   res.json({ ok: true });
@@ -1107,6 +1119,10 @@ app.post("/api/users/:id/password", requireUser, (req, res) => {
   const next = String(req.body?.password || "");
   if (next.length < 6) {
     res.status(400).json({ error: "New password must be at least 6 characters." });
+    return;
+  }
+  if (next !== String(req.body?.confirm || "")) {
+    res.status(400).json({ error: "The two passwords do not match." });
     return;
   }
   const user = req.db.users.find((entry) => entry.id === req.params.id);
