@@ -100,6 +100,18 @@
   ],
   "audit": [
     {
+      "id": "9620d7b8-a167-4488-9836-d070afaa4992",
+      "at": "2026-11-16T22:20:35.534Z",
+      "username": "wali",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "ADMIN (Abdul-Waliyi Muhammed)",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "ADMIN (Abdul-Waliyi Muhammed) updated the staff account Oluwaseun Agboola (@oluwaseu)."
+    },
+    {
       "id": "2aa4aed9-834d-46e2-8d60-86503806b470",
       "at": "2026-11-16T20:34:21.132Z",
       "username": "oluwaseu",
