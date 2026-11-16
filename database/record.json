@@ -65,6 +65,18 @@
   ],
   "audit": [
     {
+      "id": "cdbf3b0a-f658-4172-bc6e-a23978c0166a",
+      "at": "2026-11-16T19:57:42.580Z",
+      "username": "wali",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "ADMIN (Abdul-Waliyi Muhammed)",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "ADMIN (Abdul-Waliyi Muhammed) updated the staff account ADMIN (Abdul-Waliyi Muhammed) (@wali)."
+    },
+    {
       "id": "40a601cb-4f6d-4e8c-8881-36df6e0dac95",
       "at": "2026-11-16T19:57:40.887Z",
       "username": "wali",
