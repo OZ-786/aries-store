@@ -71,9 +71,46 @@
       "updatedAt": "2026-11-16T13:24:53.530Z",
       "updatedBy": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
       "updatedByName": "Abdul-Waliyi Muhammed"
+    },
+    {
+      "tag": "AST-0003",
+      "name": "ett",
+      "section": "Network equipment",
+      "quantity": 1,
+      "unit": "pcs",
+      "condition": "Good",
+      "status": "In store",
+      "storeLocation": "",
+      "companyName": "nestle",
+      "clientLocation": "agbara",
+      "handedTo": "rtr",
+      "handedToPhone": "",
+      "issuedOn": "",
+      "expectedReturn": "",
+      "serialNumber": "rtrt44",
+      "notes": "",
+      "id": "ab2cb02f-d3b5-4b15-ace3-32fc2951fd29",
+      "createdAt": "2026-11-16T20:33:55.334Z",
+      "createdBy": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
+      "createdByName": "Oluwaseun Agboola",
+      "updatedAt": "2026-11-16T20:33:55.334Z",
+      "updatedBy": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
+      "updatedByName": "Oluwaseun Agboola"
     }
   ],
   "audit": [
+    {
+      "id": "0240360f-0405-420b-b0fe-882bc5e55861",
+      "at": "2026-11-16T20:33:55.334Z",
+      "username": "oluwaseu",
+      "userId": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
+      "userName": "Oluwaseun Agboola",
+      "action": "created",
+      "itemId": "ab2cb02f-d3b5-4b15-ace3-32fc2951fd29",
+      "tag": "AST-0003",
+      "itemName": "ett",
+      "details": "Oluwaseun Agboola added ett (AST-0003) to Network equipment. Quantity 1 pcs, Good, In store."
+    },
     {
       "id": "8958462e-42c8-4f38-bb9a-82b21cba4cd5",
       "at": "2026-11-16T20:32:43.550Z",
