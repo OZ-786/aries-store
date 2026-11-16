@@ -211,12 +211,14 @@ function authHtml() {
   const mode = state.authMode;
   const title = mode === "register" ? "Create account" : mode === "forgot" ? "Reset password" : mode === "reset" ? "Enter reset code" : "Sign in";
   const lede = mode === "register"
-    ? "This first account is the only administrator. Every account created after it is staff and shares the same inventory."
+    ? (state.needsSetup
+      ? "This first account is the only administrator. Every account created after it is staff and shares the same inventory."
+      : "This account is staff. It uses the same inventory and activity as every other account, and your real name is stored on every change.")
     : mode === "forgot"
       ? "Enter the company email on the account. If mail is set up, a code is sent. Otherwise an administrator sets the new password."
       : mode === "reset"
         ? "Enter the 6-digit code from the company email and choose a new password."
-        : "Sign in with your username or company email. Staff accounts are created by the administrator.";
+        : "Sign in with your username or company email, or create a staff account.";
   return `
     <div class="auth-wrap">
       <section class="auth-brand">
@@ -224,7 +226,7 @@ function authHtml() {
         <div>
           <h1>Store inventory record</h1>
           <p>A shared list of every tool and other item: quantity, condition, where it is, and who it was handed to.</p>
-          ${window.ARIES_API ? `<p>This page uses the one office record. Every account sees the same items, activity, and profiles.</p>` : window.ARIES_LOCAL ? `<p>This public page keeps a separate copy in this browser, so other people will not see it.</p>` : `<p>Every staff account sees this same inventory and activity log. The administrator is the only person who manages accounts.</p>`}
+          ${window.ARIES_SHARED ? `<p>Every account, item, and activity is saved in one shared GitHub record.</p>` : `<p>Every staff account sees this same inventory and activity log. The administrator is the only person who manages accounts.</p>`}
           <ul class="auth-points">
             <li>Network equipment, cables, tools, and other stock are kept in one record.</li>
             <li>Every change stores the name of the person who made it.</li>
@@ -252,7 +254,7 @@ function authHtml() {
             <label>New password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>` : ""}
             <button class="btn primary" type="submit">${mode === "register" ? "Create account" : mode === "forgot" ? "Send reset" : mode === "reset" ? "Set new password" : "Sign in"}</button>
             ${mode === "login" ? `<button class="linkish" type="button" id="forgot-auth">Forgot password</button>` : ""}
-            ${state.needsSetup || mode === "register" ? `<button class="linkish" type="button" id="switch-auth">${mode === "register" ? "I already have an account" : "Create the administrator account"}</button>` : ""}
+            ${mode === "login" || mode === "register" ? `<button class="linkish" type="button" id="switch-auth">${mode === "register" ? "I already have an account" : "Create an account"}</button>` : ""}
           </div>
         </form>
       </section>

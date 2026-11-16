@@ -1,13 +1,16 @@
 "use strict";
 
-// GitHub Pages cannot run the office server. On github.io, keep the same
-// screens and store the record in this browser.
+// On github.io the shared record is a file in this repository, not this browser.
 if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
-  // The office record handles /api, including when this page is opened from GitHub.
+  // The office server handles /api and saves into the shared GitHub record.
 } else {
-  window.ARIES_LOCAL = true;
-  const DB_KEY = "aries-store-db";
+  window.ARIES_SHARED = true;
   const SID_KEY = "aries-store-sid";
+  const REPO = "OZ-786/aries-store";
+  const RECORD_PATH = "database/record.json";
+  let memory = null;
+  let recordSha = null;
+  let loadedAt = 0;
   const SECTIONS = ["Network equipment", "Cables & materials", "Tools", "Spare parts", "Consumables", "Safety", "Others"];
   const CONDITIONS = ["New", "Good", "Fair", "Poor", "Damaged"];
   const STATUSES = ["In store", "Issued to site", "On site", "Returned", "Under repair", "Missing"];
@@ -15,20 +18,54 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
   const SITE = new Set(["Issued to site", "On site"]);
   const REVIEW_MS = 30 * 24 * 60 * 60 * 1000;
 
-  function loadDb() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(DB_KEY) || "");
-      parsed.users ||= [];
-      parsed.items ||= [];
-      parsed.audit ||= [];
-      parsed.resets ||= [];
-      parsed.seq ||= 1;
-      ensureSingleAdmin(parsed);
-      saveDb(parsed);
-      return parsed;
-    } catch {
-      return { users: [], items: [], audit: [], resets: [], seq: 1 };
-    }
+  function emptyDb() {
+    return { users: [], items: [], audit: [], resets: [], seq: 1 };
+  }
+
+  function decodeRecord(content) {
+    const binary = atob(String(content || "").replace(/\n/g, ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+
+  function encodeRecord(db) {
+    const bytes = new TextEncoder().encode(JSON.stringify(db));
+    let binary = "";
+    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+    return btoa(binary);
+  }
+
+  function githubHeaders() {
+    const headers = { Accept: "application/vnd.github+json" };
+    if (window.ARIES_GITHUB_TOKEN) headers.Authorization = `Bearer ${window.ARIES_GITHUB_TOKEN}`;
+    return headers;
+  }
+
+  async function pullRecord() {
+    const response = await fetch(`https://api.github.com/repos/${REPO}/contents/${RECORD_PATH}?ref=master`, {
+      headers: githubHeaders(),
+      cache: "no-store",
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("The shared GitHub record could not be loaded.");
+    const data = await response.json();
+    recordSha = data.sha;
+    const parsed = decodeRecord(data.content);
+    parsed.users ||= [];
+    parsed.items ||= [];
+    parsed.audit ||= [];
+    parsed.resets ||= [];
+    parsed.seq ||= 1;
+    return parsed;
+  }
+
+  async function loadDb() {
+    if (memory && Date.now() - loadedAt < 2000) return memory;
+    const remote = await pullRecord();
+    memory = remote || memory || emptyDb();
+    ensureSingleAdmin(memory);
+    loadedAt = Date.now();
+    return memory;
   }
 
   function ensureSingleAdmin(db) {
@@ -38,8 +75,53 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     for (const user of db.users) user.role = user.id === admin.id ? "admin" : "staff";
   }
 
-  function saveDb(db) {
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
+  async function saveDb(db) {
+    memory = db;
+    loadedAt = Date.now();
+    let attempt = 0;
+    while (attempt < 3) {
+      const response = await fetch(`https://api.github.com/repos/${REPO}/contents/${RECORD_PATH}`, {
+        method: "PUT",
+        headers: { ...githubHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "Update the shared store record",
+          content: encodeRecord(db),
+          branch: "master",
+          ...(recordSha ? { sha: recordSha } : {}),
+        }),
+      });
+      if (response.status === 409 || response.status === 422) {
+        const remote = await pullRecord();
+        if (remote) mergeRecord(remote, db);
+        attempt += 1;
+        continue;
+      }
+      if (!response.ok) throw new Error("The shared GitHub record could not be saved.");
+      const data = await response.json();
+      recordSha = data.content && data.content.sha;
+      return;
+    }
+    throw new Error("The shared GitHub record was changed by someone else. Try again.");
+  }
+
+  function mergeRecord(remote, local) {
+    const users = new Map(remote.users.map((user) => [user.id, user]));
+    for (const user of local.users) users.set(user.id, { ...users.get(user.id), ...user });
+    const items = new Map(remote.items.map((item) => [item.id, item]));
+    for (const item of local.items) {
+      const previous = items.get(item.id);
+      if (!previous || String(item.updatedAt || "") >= String(previous.updatedAt || "")) items.set(item.id, item);
+    }
+    const audit = new Map();
+    for (const entry of [...remote.audit, ...local.audit]) audit.set(entry.id, entry);
+    memory = {
+      users: [...users.values()],
+      items: [...items.values()],
+      audit: [...audit.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 2000),
+      resets: local.resets || remote.resets || [],
+      seq: Math.max(remote.seq || 1, local.seq || 1),
+    };
+    Object.assign(local, memory);
   }
 
   function clean(value, max) {
@@ -393,7 +475,12 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
   }
 
   async function handle(url, init) {
-    const db = loadDb();
+    let db;
+    try {
+      db = await loadDb();
+    } catch (error) {
+      return json(503, { error: error.message || "The shared GitHub record could not be loaded." });
+    }
     const user = sessionUser(db);
     const method = (init.method || "GET").toUpperCase();
     const path = url.pathname;
@@ -418,12 +505,12 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username)) return json(400, { error: "Username must be 3–32 characters: letters, numbers, dots, or dashes." });
       if (password.length < 6) return json(400, { error: "Password must be at least 6 characters." });
       if (db.users.some((entry) => entry.username === username)) return json(400, { error: "That username is already in use." });
-      if (db.users.length > 0 && (!user || user.role !== "admin")) return json(403, { error: "Only the administrator can create a staff account." });
+      if (user && user.role !== "admin") return json(403, { error: "Only the administrator can create a staff account." });
       if (contact.email && db.users.some((entry) => entry.email === contact.email)) return json(400, { error: "That company email is already on an account." });
       const created = { id: crypto.randomUUID(), name, username, email: contact.email, phone: contact.phone, passwordHash: await hashPassword(password), role: db.users.length === 0 ? "admin" : "staff", createdAt: new Date().toISOString() };
       db.users.push(created);
       addAudit(db, { userId: user?.id || created.id, userName: user?.name || created.name, action: "account", itemId: "", tag: "", itemName: "", details: `${created.name} (@${created.username}) created an account as ${created.role}.` });
-      saveDb(db);
+      await saveDb(db);
       if (!user) sessionStorage.setItem(SID_KEY, created.id);
       return json(201, { user: publicUser(created), signedIn: !user });
     }
@@ -448,7 +535,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
           createdAt: new Date().toISOString(),
         });
         addAudit(db, { userId: found.id, userName: found.name, action: "account", itemId: "", tag: "", itemName: "", details: `${found.name} requested a password reset. An administrator needs to set the password.` });
-        saveDb(db);
+        await saveDb(db);
       }
       return json(200, { mailed: false, message: "This public page cannot send company mail. An administrator can set a new password from Accounts." });
     }
@@ -465,7 +552,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       if (!(await verifyPassword(String(body.current || ""), user.passwordHash))) return json(400, { error: "Current password is incorrect." });
       if (String(body.next || "").length < 6) return json(400, { error: "New password must be at least 6 characters." });
       user.passwordHash = await hashPassword(String(body.next));
-      saveDb(db);
+      await saveDb(db);
       return json(200, { ok: true });
     }
     if (method === "POST" && path === "/api/auth/profile") {
@@ -475,7 +562,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       user.email = contact.email;
       user.phone = contact.phone;
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated their company email and phone.` });
-      saveDb(db);
+      await saveDb(db);
       return json(200, { user: publicUser(user) });
     }
     if (method === "GET" && path === "/api/users") {
@@ -500,7 +587,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       target.email = contact.email;
       target.phone = contact.phone;
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated the staff account ${target.name} (@${target.username}).` });
-      saveDb(db);
+      await saveDb(db);
       return json(200, { user: publicUser(target) });
     }
     if (setPassword && method === "POST") {
@@ -513,7 +600,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
         if (entry.userId === target.id && entry.status !== "used") entry.status = "set-by-admin";
       }
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} set a new password for ${target.name}.` });
-      saveDb(db);
+      await saveDb(db);
       return json(200, { ok: true });
     }
     if (method === "DELETE" && path.startsWith("/api/users/")) {
@@ -528,7 +615,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
         return json(400, { error: "Keep at least one administrator." });
       }
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} removed the account ${removed.name} (@${removed.username}).` });
-      saveDb(db);
+      await saveDb(db);
       return json(200, { ok: true });
     }
     if (method === "GET" && path === "/api/items") {
@@ -544,7 +631,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       const item = { ...value, tag, id: crypto.randomUUID(), createdAt: now, createdBy: user.id, createdByName: user.name, updatedAt: now, updatedBy: user.id, updatedByName: user.name };
       db.items.push(item);
       addAudit(db, { userId: user.id, userName: user.name, action: "created", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} added ${item.name} (${item.tag}) to ${item.section}. Quantity ${item.quantity} ${item.unit}, ${item.condition}, ${item.status}.` });
-      saveDb(db);
+      await saveDb(db);
       return json(201, { item });
     }
     const itemMatch = path.match(/^\/api\/items\/([^/]+)$/);
@@ -556,7 +643,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       item.updatedBy = user.id;
       item.updatedByName = user.name;
       addAudit(db, { userId: user.id, userName: user.name, action: "reviewed", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} confirmed ${item.name} (${item.tag}) is up to date.` });
-      saveDb(db);
+      await saveDb(db);
       return json(200, { item });
     }
     if (itemMatch && method === "PUT") {
@@ -573,7 +660,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       item.updatedBy = user.id;
       item.updatedByName = user.name;
       addAudit(db, { userId: user.id, userName: user.name, action: changes ? "updated" : "reviewed", itemId: item.id, tag: item.tag, itemName: item.name, details: changes ? `${user.name} updated ${item.name} (${item.tag}). ${changes}` : `${user.name} confirmed ${item.name} (${item.tag}) is up to date.` });
-      saveDb(db);
+      await saveDb(db);
       return json(200, { item });
     }
     if (itemMatch && method === "DELETE") {
@@ -581,7 +668,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       if (index < 0) return json(404, { error: "Item not found." });
       const [item] = db.items.splice(index, 1);
       addAudit(db, { userId: user.id, userName: user.name, action: "deleted", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} removed ${item.name} (${item.tag}).` });
-      saveDb(db);
+      await saveDb(db);
       return json(200, { ok: true });
     }
     if (method === "GET" && path === "/api/audit") return json(200, { audit: db.audit.slice(0, 300) });
@@ -600,7 +687,9 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init = {}) => {
     const url = new URL(typeof input === "string" ? input : input.url, location.origin);
-    if (url.pathname.startsWith("/api/")) return handle(url, init);
+    if (url.pathname.startsWith("/api/")) {
+      return handle(url, init).catch((error) => json(503, { error: error.message || "The shared GitHub record could not be saved." }));
+    }
     return originalFetch(input, init);
   };
 }

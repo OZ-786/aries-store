@@ -2,6 +2,7 @@
 
 const crypto = require("crypto");
 const fs = require("fs");
+const { spawnSync } = require("child_process");
 const net = require("net");
 const os = require("os");
 const path = require("path");
@@ -57,16 +58,113 @@ function ensureDb() {
   }
 }
 
-function loadDb() {
-  ensureDb();
-  const raw = fs.readFileSync(DB_PATH, "utf8");
-  const db = JSON.parse(raw);
+const GH = "C:\\Program Files\\GitHub CLI\\gh.exe";
+const RECORD_API = "repos/OZ-786/aries-store/contents/database/record.json";
+let remoteSha = null;
+let dbCache = null;
+let dbCacheAt = 0;
+
+function ghApi(method, endpoint, body) {
+  const args = ["api", "--method", method, endpoint];
+  if (body) args.push("--input", "-");
+  const result = spawnSync(GH, args, {
+    input: body ? JSON.stringify(body) : undefined,
+    encoding: "utf8",
+    maxBuffer: 20 * 1024 * 1024,
+    windowsHide: true,
+  });
+  if (result.status !== 0) {
+    throw new Error(`${result.stderr || result.stdout || "GitHub request failed"}`.trim());
+  }
+  return result.stdout ? JSON.parse(result.stdout) : {};
+}
+
+function normalizeDb(db) {
   db.users ||= [];
   db.items ||= [];
   db.audit ||= [];
   db.resets ||= [];
   db.seq ||= 1;
-  if (ensureSingleAdmin(db)) saveDb(db);
+  return db;
+}
+
+function mergeRecord(local, remote) {
+  const users = new Map(remote.users.map((user) => [user.id, user]));
+  for (const user of local.users) users.set(user.id, { ...users.get(user.id), ...user });
+  const items = new Map(remote.items.map((item) => [item.id, item]));
+  for (const item of local.items) {
+    const previous = items.get(item.id);
+    if (!previous || String(item.updatedAt || "") >= String(previous.updatedAt || "")) items.set(item.id, item);
+  }
+  const audit = new Map();
+  for (const entry of [...remote.audit, ...local.audit]) audit.set(entry.id, entry);
+  return normalizeDb({
+    users: [...users.values()],
+    items: [...items.values()],
+    audit: [...audit.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 2000),
+    resets: local.resets && local.resets.length ? local.resets : remote.resets || [],
+    seq: Math.max(local.seq || 1, remote.seq || 1),
+  });
+}
+
+function readLocalDb() {
+  ensureDb();
+  return normalizeDb(JSON.parse(fs.readFileSync(DB_PATH, "utf8")));
+}
+
+function pullRemoteRecord() {
+  try {
+    const data = ghApi("GET", `${RECORD_API}?ref=master`);
+    remoteSha = data.sha;
+    return normalizeDb(JSON.parse(Buffer.from(data.content, "base64").toString("utf8")));
+  } catch (error) {
+    if (/404|Not Found/i.test(error.message)) return null;
+    console.error("Could not read the GitHub record.", error.message.split("\n")[0]);
+    return undefined;
+  }
+}
+
+function pushRemoteRecord(db) {
+  const body = {
+    message: "Update the shared store record",
+    content: Buffer.from(JSON.stringify(db, null, 2)).toString("base64"),
+    branch: "master",
+  };
+  if (remoteSha) body.sha = remoteSha;
+  try {
+    const data = ghApi("PUT", RECORD_API, body);
+    remoteSha = data.content && data.content.sha;
+  } catch (error) {
+    if (/409|422|sha/i.test(error.message)) {
+      const remote = pullRemoteRecord();
+      if (!remote) throw error;
+      const merged = mergeRecord(db, remote);
+      Object.assign(db, merged);
+      writeLocalDb(db);
+      const retry = {
+        message: "Update the shared store record",
+        content: Buffer.from(JSON.stringify(db, null, 2)).toString("base64"),
+        branch: "master",
+        sha: remoteSha,
+      };
+      const data = ghApi("PUT", RECORD_API, retry);
+      remoteSha = data.content && data.content.sha;
+      return;
+    }
+    console.error("Could not save the GitHub record.", error.message.split("\n")[0]);
+  }
+}
+
+function loadDb() {
+  if (dbCache && Date.now() - dbCacheAt < 2000) return dbCache;
+  let db = readLocalDb();
+  const remote = pullRemoteRecord();
+  if (remote) db = mergeRecord(db, remote);
+  const changed = ensureSingleAdmin(db);
+  writeLocalDb(db);
+  if (remote === null || changed) pushRemoteRecord(db);
+  dbCache = db;
+  dbCacheAt = Date.now();
   return db;
 }
 
@@ -85,7 +183,7 @@ function ensureSingleAdmin(db) {
   return changed;
 }
 
-function saveDb(db) {
+function writeLocalDb(db) {
   const tmp = DB_PATH + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
   try {
@@ -94,6 +192,13 @@ function saveDb(db) {
     fs.rmSync(DB_PATH, { force: true });
     fs.renameSync(tmp, DB_PATH);
   }
+}
+
+function saveDb(db) {
+  writeLocalDb(db);
+  pushRemoteRecord(db);
+  dbCache = db;
+  dbCacheAt = Date.now();
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
@@ -780,7 +885,7 @@ app.get("/api/auth/me", (req, res) => {
 app.post("/api/auth/register", (req, res) => {
   const db = loadDb();
   const actor = currentUser(req, db);
-  if (db.users.length > 0 && (!actor || actor.role !== "admin")) {
+  if (actor && actor.role !== "admin") {
     res.status(403).json({ error: "Only the administrator can create a staff account." });
     return;
   }
