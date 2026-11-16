@@ -2,7 +2,7 @@
   "users": [
     {
       "id": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
-      "name": "Abdul-Waliyi Muhammed",
+      "name": "ADMIN (Abdul-Waliyi Muhammed)",
       "username": "wali",
       "passwordHash": "c1779d23a768bc6ba3cd21b8a8b9c7ce:adbfc67d5d5089cbcfa24a6d474992da05a12e7280b24d72b8208f5bb9b914aa",
       "role": "admin",
@@ -64,6 +64,18 @@
     }
   ],
   "audit": [
+    {
+      "id": "40a601cb-4f6d-4e8c-8881-36df6e0dac95",
+      "at": "2026-11-16T19:57:40.887Z",
+      "username": "wali",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "ADMIN (Abdul-Waliyi Muhammed)",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "ADMIN (Abdul-Waliyi Muhammed) updated the staff account ADMIN (Abdul-Waliyi Muhammed) (@wali)."
+    },
     {
       "id": "d211fd52-4ba2-499f-b311-353127eeeacb",
       "at": "2026-11-16T19:56:22.419Z",
