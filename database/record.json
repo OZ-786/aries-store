@@ -7,6 +7,16 @@
       "passwordHash": "078228c6fceb05072dc024efa2f11f0f:433206759e7649e406e242b69a27dec6fb676b2474ef60d901e0717dfd5831fa",
       "role": "admin",
       "createdAt": "2026-11-16T13:15:56.513Z"
+    },
+    {
+      "id": "ef51dcee-33af-488f-9d41-f4ed865894e1",
+      "name": "Abdul-Waliyi Ozemoya Muhammed",
+      "username": "abdul",
+      "email": "abdul@ariesng.com",
+      "phone": "+2349065704348",
+      "passwordHash": "cfb001398d0391f0504f3e9e28352b87:dcc7a20e10512b4de330df963b7512dc707ef9c50586d59b257e834826ecbcae",
+      "role": "staff",
+      "createdAt": "2026-11-16T19:44:02.578Z"
     }
   ],
   "items": [
@@ -62,6 +72,18 @@
     }
   ],
   "audit": [
+    {
+      "id": "8b02161c-074b-4b16-bb5d-58a9ad1e9e32",
+      "at": "2026-11-16T19:44:02.578Z",
+      "username": "abdul",
+      "userId": "ef51dcee-33af-488f-9d41-f4ed865894e1",
+      "userName": "Abdul-Waliyi Ozemoya Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Ozemoya Muhammed (@abdul) created an account as staff."
+    },
     {
       "id": "f7226883-e6e1-4b40-b6e0-8281feaf25a2",
       "at": "2026-11-16T13:24:53.530Z",
@@ -536,6 +558,6 @@
       "details": "Abdul-Waliyi Muhammed (@wali) created an account as admin."
     }
   ],
-  "seq": 1,
-  "resets": []
+  "resets": [],
+  "seq": 1
 }
