@@ -73,6 +73,18 @@
   ],
   "audit": [
     {
+      "id": "97886c9c-13d9-4717-bb03-aed85826405d",
+      "at": "2026-11-16T19:45:37.403Z",
+      "username": "abdul",
+      "userId": "ef51dcee-33af-488f-9d41-f4ed865894e1",
+      "userName": "Abdul-Waliyi Ozemoya Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Ozemoya Muhammed updated their company email and phone."
+    },
+    {
       "id": "8b02161c-074b-4b16-bb5d-58a9ad1e9e32",
       "at": "2026-11-16T19:44:02.578Z",
       "username": "abdul",
