@@ -6,7 +6,9 @@
       "username": "wali",
       "passwordHash": "c1779d23a768bc6ba3cd21b8a8b9c7ce:adbfc67d5d5089cbcfa24a6d474992da05a12e7280b24d72b8208f5bb9b914aa",
       "role": "admin",
-      "createdAt": "2026-11-16T13:15:56.513Z"
+      "createdAt": "2026-11-16T13:15:56.513Z",
+      "email": "abdul@ariesng.com",
+      "phone": "9065704348"
     }
   ],
   "items": [
@@ -62,6 +64,18 @@
     }
   ],
   "audit": [
+    {
+      "id": "2996f2bc-78c5-4f90-8993-af474b3d3ae0",
+      "at": "2026-11-16T19:56:10.937Z",
+      "username": "wali",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated their company email and phone."
+    },
     {
       "id": "67757e77-64ed-4e41-ab13-debd14c4dce6",
       "at": "2026-11-16T19:55:39.343Z",
