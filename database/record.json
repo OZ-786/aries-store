@@ -4,19 +4,9 @@
       "id": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
       "name": "Abdul-Waliyi Muhammed",
       "username": "wali",
-      "passwordHash": "078228c6fceb05072dc024efa2f11f0f:433206759e7649e406e242b69a27dec6fb676b2474ef60d901e0717dfd5831fa",
+      "passwordHash": "c1779d23a768bc6ba3cd21b8a8b9c7ce:adbfc67d5d5089cbcfa24a6d474992da05a12e7280b24d72b8208f5bb9b914aa",
       "role": "admin",
       "createdAt": "2026-11-16T13:15:56.513Z"
-    },
-    {
-      "id": "ef51dcee-33af-488f-9d41-f4ed865894e1",
-      "name": "Abdul-Waliyi Ozemoya Muhammed",
-      "username": "abdul",
-      "email": "abdul@ariesng.com",
-      "phone": "+2349065704348",
-      "passwordHash": "cfb001398d0391f0504f3e9e28352b87:dcc7a20e10512b4de330df963b7512dc707ef9c50586d59b257e834826ecbcae",
-      "role": "staff",
-      "createdAt": "2026-11-16T19:44:02.578Z"
     }
   ],
   "items": [
@@ -72,6 +62,29 @@
     }
   ],
   "audit": [
+    {
+      "id": "67757e77-64ed-4e41-ab13-debd14c4dce6",
+      "at": "2026-11-16T19:55:39.343Z",
+      "username": "wali",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed removed the account Abdul-Waliyi Ozemoya Muhammed (@abdul)."
+    },
+    {
+      "id": "d94b421d-bc41-4c1c-8c2c-e3914357b658",
+      "at": "2026-11-16T19:54:02.060Z",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed set a new password for the administrator account."
+    },
     {
       "id": "a7a52065-1b7f-44ea-9e43-e2e29f014b8a",
       "at": "2026-11-16T19:46:59.480Z",
