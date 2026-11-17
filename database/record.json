@@ -96,9 +96,46 @@
       "updatedAt": "2026-11-16T20:34:21.132Z",
       "updatedBy": "f451c1f0-118a-40c5-a5d0-2fe1ea3c9813",
       "updatedByName": "Oluwaseun Agboola"
+    },
+    {
+      "tag": "AST-0004",
+      "name": "cisco 93600",
+      "section": "Network equipment",
+      "quantity": 5,
+      "unit": "pcs",
+      "condition": "Good",
+      "status": "In store",
+      "storeLocation": "",
+      "companyName": "unilever",
+      "clientLocation": "oregun",
+      "handedTo": "dontun",
+      "handedToPhone": "",
+      "issuedOn": "2026-04-23",
+      "expectedReturn": "",
+      "serialNumber": "sdstr4td44edrr",
+      "notes": "",
+      "id": "887da7a2-24f0-4fa0-bdb7-b82de22d228a",
+      "createdAt": "2026-11-17T09:57:17.988Z",
+      "createdBy": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "createdByName": "ADMIN (Abdul-Waliyi Muhammed)",
+      "updatedAt": "2026-11-17T09:57:17.988Z",
+      "updatedBy": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "updatedByName": "ADMIN (Abdul-Waliyi Muhammed)"
     }
   ],
   "audit": [
+    {
+      "id": "81c017a7-7b24-4cff-8b96-13e7a0ecbaba",
+      "at": "2026-11-17T09:57:17.990Z",
+      "username": "wali",
+      "userId": "13728e8e-a72a-44f1-b0f0-e3c068d9556c",
+      "userName": "ADMIN (Abdul-Waliyi Muhammed)",
+      "action": "created",
+      "itemId": "887da7a2-24f0-4fa0-bdb7-b82de22d228a",
+      "tag": "AST-0004",
+      "itemName": "cisco 93600",
+      "details": "ADMIN (Abdul-Waliyi Muhammed) added cisco 93600 (AST-0004) to Network equipment. Quantity 5 pcs, Good, In store."
+    },
     {
       "id": "9620d7b8-a167-4488-9836-d070afaa4992",
       "at": "2026-11-16T22:20:35.534Z",
