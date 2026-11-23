@@ -9,19 +9,9 @@
       "passwordHash": "279a0e6e7a5d0b2af8d4b8e1194f438d:9cf182ef2e4a6be27d208f3fd16dcacfef452fe9cb7002ae5bf89828123f4205",
       "role": "admin",
       "createdAt": "2026-11-23T20:03:19.828Z"
-    },
-    {
-      "id": "0d47d55f-1147-4ada-9d1a-5d9032fdfe61",
-      "name": "Test Staff",
-      "username": "teststaff",
-      "email": "",
-      "phone": "",
-      "passwordHash": "b5b6194facb9527ff7675a9601de6813:85629fa1c1612687f089759c8555f1072399f9f8db299dc2417e5ad9c072c0be",
-      "role": "staff",
-      "createdAt": "2026-11-23T20:04:01.570Z"
     }
   ],
-  "usersRevision": 1795464241571,
+  "usersRevision": 1795464262858,
   "items": [
     {
       "id": "1bab843d-cbe2-407f-9deb-1b513dcc29fd",
