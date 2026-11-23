@@ -243,7 +243,8 @@ function authHtml() {
           ${mode === "register" ? `<label>Full name<input name="name" autocomplete="name" required placeholder="e.g. Adaeze Okonkwo" /></label>` : ""}
           <div class="form-grid" style="margin-top:14px">
             ${mode === "login" ? `<label>Username or company email<input name="username" autocomplete="username" required /></label>
-            <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="6" /></label>` : ""}
+            <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="6" /></label>
+            ${location.hostname.endsWith("github.io") && !window.ARIES_GITHUB_TOKEN ? `<label>GitHub save key<input name="githubToken" type="password" autocomplete="off" placeholder="Paste the store key once on this browser" /></label>` : ""}` : ""}
             ${mode === "register" ? `<label>Username<input name="username" autocomplete="username" required placeholder="adaeze" /></label>
             <label>Password<input name="password" type="password" autocomplete="new-password" required minlength="6" /></label>
             <label class="reenter">Re-enter password<input name="confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="Type the password again" /></label>
@@ -285,6 +286,11 @@ function bindAuth() {
   document.getElementById("auth-form").onsubmit = async (event) => {
     event.preventDefault();
     const form = new FormData(event.target);
+    const githubToken = String(form.get("githubToken") || "").trim();
+    if (githubToken) {
+      try { localStorage.setItem("aries-github-token", githubToken); } catch (error) { /* this browser did not store it */ }
+      window.ARIES_GITHUB_TOKEN = githubToken;
+    }
     state.error = "";
     state.notice = "";
     state.busy = true;
