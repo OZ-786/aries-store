@@ -1365,9 +1365,9 @@ async function boot() {
   try {
     const setup = await api("/api/auth/setup");
     state.needsSetup = !!setup.needsSetup;
-  } catch {
+  } catch (error) {
     state.needsSetup = false;
-    if (window.ARIES_API) state.error = "The shared office record is not reachable. Leave the store computer switched on.";
+    state.error = error.message || "The shared store record on GitHub could not be loaded. Refresh the page.";
   }
   try {
     const data = await api("/api/auth/me");

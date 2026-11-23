@@ -41,7 +41,25 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     return headers;
   }
 
+  function normalizeRecord(parsed) {
+    parsed.users ||= [];
+    parsed.items ||= [];
+    parsed.audit ||= [];
+    parsed.resets ||= [];
+    parsed.seq ||= 1;
+    return parsed;
+  }
+
   async function pullRecord() {
+    const response = await fetch(`https://raw.githubusercontent.com/${REPO}/master/${RECORD_PATH}?t=${Date.now()}`, {
+      cache: "no-store",
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("The shared GitHub record could not be loaded.");
+    return normalizeRecord(await response.json());
+  }
+
+  async function pullRecordForSave() {
     const response = await fetch(`https://api.github.com/repos/${REPO}/contents/${RECORD_PATH}?ref=master`, {
       headers: githubHeaders(),
       cache: "no-store",
@@ -50,13 +68,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     if (!response.ok) throw new Error("The shared GitHub record could not be loaded.");
     const data = await response.json();
     recordSha = data.sha;
-    const parsed = decodeRecord(data.content);
-    parsed.users ||= [];
-    parsed.items ||= [];
-    parsed.audit ||= [];
-    parsed.resets ||= [];
-    parsed.seq ||= 1;
-    return parsed;
+    return normalizeRecord(decodeRecord(data.content));
   }
 
   async function loadDb() {
@@ -78,6 +90,8 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
   async function saveDb(db) {
     memory = db;
     loadedAt = Date.now();
+    const remote = await pullRecordForSave();
+    if (remote) mergeRecord(remote, db);
     let attempt = 0;
     while (attempt < 3) {
       const response = await fetch(`https://api.github.com/repos/${REPO}/contents/${RECORD_PATH}`, {
@@ -91,10 +105,13 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
         }),
       });
       if (response.status === 409 || response.status === 422) {
-        const remote = await pullRecord();
+        const remote = await pullRecordForSave();
         if (remote) mergeRecord(remote, db);
         attempt += 1;
         continue;
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Error("GitHub did not allow this page to save. The record can still be read.");
       }
       if (!response.ok) throw new Error("The shared GitHub record could not be saved.");
       const data = await response.json();
@@ -161,13 +178,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
   }
 
   async function hashPassword(password, salt = crypto.randomUUID().replace(/-/g, "")) {
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-    const bits = await crypto.subtle.deriveBits(
-      { name: "PBKDF2", salt: encoder.encode(salt), iterations: 120000, hash: "SHA-256" },
-      key,
-      256
-    );
+    const bits = ariesScrypt(password, salt, 16384, 8, 1, 32);
     return `${salt}:${bytesToHex(bits)}`;
   }
 
