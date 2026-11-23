@@ -443,6 +443,17 @@ function recordAttention(items) {
   return { overdue, missing, attention };
 }
 
+function money(value) {
+  if (value == null || value === "") return "—";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return `₦${number.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function stockValue(items) {
+  return items.reduce((sum, item) => sum + (item.lineValue == null ? 0 : Number(item.lineValue)), 0);
+}
+
 function summaryText(items) {
   const focus = recordAttention(items);
   return `Showing ${items.length} of ${state.items.length}. ${focus.overdue} overdue return${focus.overdue === 1 ? "" : "s"}, ${focus.missing} missing, ${focus.attention} poor, damaged, or missing.`;
@@ -458,6 +469,7 @@ function statsHtml(items) {
   return `
       <div class="stat"><b>${items.length}</b><span>Items shown</span></div>
       <div class="stat"><b>${Number(qty.toFixed(2))}</b><span>Quantity</span></div>
+      <div class="stat"><b>${money(stockValue(items))}</b><span>Stock value</span></div>
       <div class="stat"><b>${inStore}</b><span>In the store</span></div>
       <div class="stat"><b>${withClients}</b><span>Issued to site</span></div>
       <div class="stat ${focus.overdue ? "alerting" : ""}"><b>${focus.overdue}</b><span>Overdue returns</span></div>
@@ -525,6 +537,8 @@ function itemCells(item) {
     <td data-label="Item">${esc(item.name)}${item.serialNumber ? `<span class="sub">${esc(item.serialNumber)}</span>` : ""}</td>
     <td data-label="Section">${esc(item.section)}</td>
     <td data-label="Qty">${esc(item.quantity)} ${esc(item.unit)}</td>
+    <td data-label="Unit price">${money(item.unitPrice)}</td>
+    <td data-label="Value">${money(item.lineValue)}</td>
     <td data-label="Condition"><span class="badge ${conditionClass(item.condition)}">${esc(item.condition)}</span></td>
     <td data-label="Status"><span class="badge ${statusClass(item.status)}">${esc(item.status)}</span>${needsReview(item) ? `<span class="sub">Review due</span>` : ""}</td>
     <td data-label="Location">${esc(where)}</td>
@@ -556,10 +570,10 @@ function rowsHtml(items) {
         const qty = group.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         return `
           <section class="group">
-            <h3>${esc(key)} <span>${group.length} item${group.length === 1 ? "" : "s"} · ${Number(qty.toFixed(2))} quantity</span></h3>
+            <h3>${esc(key)} <span>${group.length} item${group.length === 1 ? "" : "s"} · ${Number(qty.toFixed(2))} quantity · ${money(stockValue(group))}</span></h3>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Tag</th><th>Item</th><th>Section</th><th>Qty</th><th>Condition</th><th>Status</th><th>Handed to</th><th>Updated</th></tr></thead>
+                <thead><tr><th>Tag</th><th>Item</th><th>Section</th><th>Qty</th><th>Unit price</th><th>Value</th><th>Condition</th><th>Status</th><th>Handed to</th><th>Updated</th></tr></thead>
                 <tbody>
                   ${group
                     .map(
@@ -568,6 +582,8 @@ function rowsHtml(items) {
                         <td data-label="Item">${esc(item.name)}</td>
                         <td data-label="Section">${esc(item.section)}</td>
                         <td data-label="Qty">${esc(item.quantity)} ${esc(item.unit)}</td>
+                        <td data-label="Unit price">${money(item.unitPrice)}</td>
+                        <td data-label="Value">${money(item.lineValue)}</td>
                         <td data-label="Condition"><span class="badge ${conditionClass(item.condition)}">${esc(item.condition)}</span></td>
                         <td data-label="Status"><span class="badge ${statusClass(item.status)}">${esc(item.status)}</span></td>
                         <td data-label="Handed to">${esc(item.handedTo || "—")}</td>
@@ -586,7 +602,7 @@ function rowsHtml(items) {
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Tag</th><th>Item</th><th>Section</th><th>Qty</th><th>Condition</th><th>Status</th><th>Company / location</th><th>Handed to</th><th>Updated by</th></tr>
+          <tr><th>Tag</th><th>Item</th><th>Section</th><th>Qty</th><th>Unit price</th><th>Value</th><th>Condition</th><th>Status</th><th>Company / location</th><th>Handed to</th><th>Updated by</th></tr>
         </thead>
         <tbody>
           ${items.map((item) => `<tr class="clickable ${needsReview(item) ? "due" : ""} ${item.id === state.highlightId ? "just-added" : ""}" data-id="${item.id}">${itemCells(item)}</tr>`).join("")}
@@ -720,6 +736,8 @@ function drawerHtml() {
         ${state.error && state.view === "inventory" ? `<div class="alert">${esc(state.error)}</div>` : ""}
         <dl class="dl">
           ${pair("Quantity", esc(`${item.quantity} ${item.unit}`))}
+          ${pair("Unit price", esc(money(item.unitPrice)))}
+          ${pair("Value", esc(money(item.lineValue)))}
           ${pair("Condition", `<span class="badge ${conditionClass(item.condition)}">${esc(item.condition)}</span>`)}
           ${pair("Status", `<span class="badge ${statusClass(item.status)}">${esc(item.status)}</span>`)}
           ${pair("Store location", esc(item.storeLocation))}
@@ -836,10 +854,12 @@ function modalHtml() {
           ${field("serialNumber", "Serial number", item.serialNumber, 'maxlength="80"')}
           <p class="hint wide">Network equipment covers routers, firewalls, access points, and switches. Cables & materials covers Cat6, fiber, and patch cords. Tools covers a LAN tester, fiber splicer, and other tools. Choose Custom section for anything else.</p>
         </div>
-        <p class="section-title">Quantity, condition, status</p>
+        <p class="section-title">Quantity, price, condition, status</p>
         <div class="form-grid two">
           ${field("quantity", "Quantity", item.quantity, 'type="number" min="0" step="0.01" required')}
           <label>Unit<select name="unit">${options(UNITS, item.unit)}</select></label>
+          ${field("unitPrice", "Unit price (₦)", item.unitPrice ?? "", 'type="number" min="0" step="0.01" placeholder="Leave blank if unknown"')}
+          <p class="hint">Value is the quantity multiplied by the unit price. Prices are in naira.</p>
           <label>Condition<select name="condition">${options(CONDITIONS, item.condition)}</select></label>
           <label>Status<select name="status">${options(STATUSES, item.status)}</select></label>
         </div>
@@ -875,6 +895,7 @@ function formValue(form) {
     section: data.get("section") === "__custom__" ? data.get("customSection") : data.get("section"),
     quantity: data.get("quantity"),
     unit: data.get("unit"),
+    unitPrice: data.get("unitPrice"),
     condition: data.get("condition"),
     status: data.get("status"),
     storeLocation: data.get("storeLocation"),

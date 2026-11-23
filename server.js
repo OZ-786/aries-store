@@ -47,6 +47,8 @@ const FIELD_LABELS = {
   expectedReturn: "Expected return",
   serialNumber: "Serial number",
   notes: "Notes",
+  unitPrice: "Unit price",
+  lineValue: "Value",
 };
 
 const sessions = new Map();
@@ -88,23 +90,47 @@ function normalizeDb(db) {
   return db;
 }
 
+function chooseList(localRev, remoteRev, localList, remoteList, merge) {
+  const left = Number(localRev) || 0;
+  const right = Number(remoteRev) || 0;
+  if (left > right) return { list: localList, revision: left };
+  if (right > left) return { list: remoteList, revision: right };
+  return { list: merge(), revision: left };
+}
+
 function mergeRecord(local, remote) {
-  const users = new Map(remote.users.map((user) => [user.id, user]));
-  for (const user of local.users) users.set(user.id, { ...users.get(user.id), ...user });
-  const items = new Map(remote.items.map((item) => [item.id, item]));
-  for (const item of local.items) {
-    const previous = items.get(item.id);
-    if (!previous || String(item.updatedAt || "") >= String(previous.updatedAt || "")) items.set(item.id, item);
-  }
+  const chosenUsers = chooseList(local.usersRevision, remote.usersRevision, local.users, remote.users, () => {
+    const users = new Map(remote.users.map((user) => [user.id, user]));
+    for (const user of local.users) users.set(user.id, { ...users.get(user.id), ...user });
+    return [...users.values()];
+  });
+  const chosenItems = chooseList(local.itemsRevision, remote.itemsRevision, local.items, remote.items, () => {
+    const items = new Map(remote.items.map((item) => [item.id, item]));
+    for (const item of local.items) {
+      const previous = items.get(item.id);
+      if (!previous || String(item.updatedAt || "") >= String(previous.updatedAt || "")) items.set(item.id, item);
+    }
+    return [...items.values()];
+  });
   const audit = new Map();
   for (const entry of [...remote.audit, ...local.audit]) audit.set(entry.id, entry);
   return normalizeDb({
-    users: [...users.values()],
-    items: [...items.values()],
+    users: chosenUsers.list,
+    usersRevision: chosenUsers.revision,
+    items: chosenItems.list,
+    itemsRevision: chosenItems.revision,
     audit: [...audit.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 2000),
     resets: local.resets && local.resets.length ? local.resets : remote.resets || [],
     seq: Math.max(local.seq || 1, remote.seq || 1),
   });
+}
+
+function touchUsers(db) {
+  db.usersRevision = Date.now();
+}
+
+function touchItems(db) {
+  db.itemsRevision = Date.now();
 }
 
 function readLocalDb() {
@@ -159,10 +185,15 @@ function loadDb() {
   if (dbCache && Date.now() - dbCacheAt < 2000) return dbCache;
   let db = readLocalDb();
   const remote = pullRemoteRecord();
+  const localUsersRev = Number(db.usersRevision) || 0;
+  const localItemsRev = Number(db.itemsRevision) || 0;
+  const remoteUsersRev = remote ? Number(remote.usersRevision) || 0 : 0;
+  const remoteItemsRev = remote ? Number(remote.itemsRevision) || 0 : 0;
   if (remote) db = mergeRecord(db, remote);
   const changed = ensureSingleAdmin(db);
+  if (changed) touchUsers(db);
   writeLocalDb(db);
-  if (remote === null || changed) pushRemoteRecord(db);
+  if (remote === null || changed || localUsersRev > remoteUsersRev || localItemsRev > remoteItemsRev) pushRemoteRecord(db);
   dbCache = db;
   dbCacheAt = Date.now();
   return db;
@@ -388,6 +419,25 @@ function parseQuantity(value) {
   return Math.round(number * 100) / 100;
 }
 
+function parsePrice(value) {
+  if (value == null || String(value).trim() === "") return null;
+  const number = Number(String(value).replace(/[₦,\s]/g, ""));
+  if (!Number.isFinite(number) || number < 0 || number > 1000000000) return undefined;
+  return Math.round(number * 100) / 100;
+}
+
+function lineValue(quantity, unitPrice) {
+  if (unitPrice == null || quantity == null) return null;
+  return Math.round(quantity * unitPrice * 100) / 100;
+}
+
+function formatNaira(value) {
+  if (value == null || value === "") return "—";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return `NGN ${number.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function parseDate(value) {
   const text = clean(value, 10);
   if (!text) return "";
@@ -415,6 +465,7 @@ function validateItem(body, { existingTag } = {}) {
   const expectedReturn = parseDate(body.expectedReturn);
   const serialNumber = clean(body.serialNumber, 80);
   const notes = cleanBlock(body.notes, 2000);
+  const unitPrice = parsePrice(body.unitPrice);
 
   if (tag && !/^[A-Z0-9][A-Z0-9\-_/]{0,31}$/.test(tag)) errors.push("Tag can use letters, numbers, and dashes only.");
   if (!name) errors.push("Enter the item name.");
@@ -422,6 +473,7 @@ function validateItem(body, { existingTag } = {}) {
     errors.push("Choose a section, or enter a custom section using letters, numbers, and spaces.");
   }
   if (quantity == null) errors.push("Enter a quantity of zero or more.");
+  if (unitPrice === undefined) errors.push("Enter a unit price of zero or more, or leave it blank.");
   if (!UNITS.includes(unit)) errors.push("Choose a unit.");
   if (!CONDITIONS.includes(condition)) errors.push("Choose a condition.");
   if (!STATUSES.includes(status)) errors.push("Choose a status.");
@@ -452,6 +504,8 @@ function validateItem(body, { existingTag } = {}) {
       expectedReturn: expectedReturn || "",
       serialNumber,
       notes,
+      unitPrice: unitPrice == null ? null : unitPrice,
+      lineValue: lineValue(quantity, unitPrice == null ? null : unitPrice),
       previousTag: existingTag || "",
     },
   };
@@ -540,6 +594,8 @@ function buildCsv(items, summary) {
     "Issued on",
     "Expected return",
     "Serial number",
+    "Unit price",
+    "Value",
     "Notes",
     "Created by",
     "Created at",
@@ -549,7 +605,7 @@ function buildCsv(items, summary) {
   const lines = [];
   if (summary) {
     lines.push(["Summary", summary.label].map(csvCell).join(","));
-    lines.push(["Items", summary.count, "Quantity", summary.quantity, "In store", summary.inStore, "Issued to site", summary.issued, "Missing", summary.missing, "Overdue returns", summary.overdue].map(csvCell).join(","));
+    lines.push(["Items", summary.count, "Quantity", summary.quantity, "Stock value", formatNaira(summary.stockValue), "In store", summary.inStore, "Issued to site", summary.issued, "Missing", summary.missing, "Overdue returns", summary.overdue].map(csvCell).join(","));
     lines.push("");
   }
   lines.push(headers.join(","));
@@ -571,6 +627,8 @@ function buildCsv(items, summary) {
         item.issuedOn,
         item.expectedReturn,
         item.serialNumber,
+        item.unitPrice == null ? "" : item.unitPrice,
+        item.lineValue == null ? "" : item.lineValue,
         item.notes,
         item.createdByName,
         item.createdAt,
@@ -710,6 +768,7 @@ function buildPdf(items, meta) {
     const pairs = [
       ["Tag", item.tag, "Section", item.section],
       ["Item", item.name, "Quantity", `${item.quantity} ${item.unit}`],
+      ["Unit price", formatNaira(item.unitPrice), "Value", formatNaira(item.lineValue)],
       ["Condition", item.condition, "Status", item.status],
       ["Store location", item.storeLocation || "—", "Serial number", item.serialNumber || "—"],
       ["Company", item.companyName || "—", "Client location", item.clientLocation || "—"],
@@ -941,6 +1000,7 @@ app.post("/api/auth/register", (req, res) => {
     itemName: "",
     details: `${user.name} (@${user.username}) created an account as ${user.role}.`,
   });
+  touchUsers(db);
   saveDb(db);
   const token = actor ? "" : setSession(res, user);
   res.status(201).json({ user: publicUser(user), signedIn: !actor, token });
@@ -1037,6 +1097,7 @@ app.post("/api/auth/reset", (req, res) => {
     itemName: "",
     details: `${user.name} set a new password with an email code.`,
   });
+  touchUsers(db);
   saveDb(db);
   const token = setSession(res, user);
   res.json({ user: publicUser(user), token });
@@ -1063,6 +1124,7 @@ app.post("/api/auth/profile", requireUser, (req, res) => {
     itemName: "",
     details: `${req.user.name} updated their company email and phone.`,
   });
+  touchUsers(req.db);
   saveDb(req.db);
   res.json({ user: publicUser(req.user) });
 });
@@ -1088,6 +1150,7 @@ app.post("/api/auth/password", requireUser, (req, res) => {
     return;
   }
   req.user.passwordHash = hashPassword(next);
+  touchUsers(req.db);
   saveDb(req.db);
   res.json({ ok: true });
 });
@@ -1143,6 +1206,7 @@ app.post("/api/users/:id/password", requireUser, (req, res) => {
     itemName: "",
     details: `${req.user.name} set a new password for ${user.name}.`,
   });
+  touchUsers(req.db);
   saveDb(req.db);
   res.json({ ok: true });
 });
@@ -1188,6 +1252,7 @@ app.put("/api/users/:id", requireUser, (req, res) => {
     itemName: "",
     details: `${req.user.name} updated the staff account ${user.name} (@${user.username}).`,
   });
+  touchUsers(req.db);
   saveDb(req.db);
   res.json({ user: publicUser(user) });
 });
@@ -1222,6 +1287,7 @@ app.delete("/api/users/:id", requireUser, (req, res) => {
     itemName: "",
     details: `${req.user.name} removed the account ${removed.name} (@${removed.username}).`,
   });
+  touchUsers(req.db);
   saveDb(req.db);
   res.json({ ok: true });
 });
@@ -1266,6 +1332,7 @@ app.post("/api/items", requireUser, (req, res) => {
     itemName: item.name,
     details: `${req.user.name} added ${item.name} (${item.tag}) to ${item.section}. Quantity ${item.quantity} ${item.unit}, ${item.condition}, ${item.status}.`,
   });
+  touchItems(req.db);
   saveDb(req.db);
   res.status(201).json({ item });
 });
@@ -1308,6 +1375,7 @@ app.put("/api/items/:id", requireUser, (req, res) => {
       ? `${req.user.name} updated ${item.name} (${item.tag}). ${changes}`
       : `${req.user.name} confirmed ${item.name} (${item.tag}) is up to date.`,
   });
+  touchItems(req.db);
   saveDb(req.db);
   res.json({ item });
 });
@@ -1330,6 +1398,7 @@ app.post("/api/items/:id/review", requireUser, (req, res) => {
     itemName: item.name,
     details: `${req.user.name} confirmed ${item.name} (${item.tag}) is up to date.`,
   });
+  touchItems(req.db);
   saveDb(req.db);
   res.json({ item });
 });
@@ -1350,6 +1419,7 @@ app.delete("/api/items/:id", requireUser, (req, res) => {
     itemName: item.name,
     details: `${req.user.name} removed ${item.name} (${item.tag}). Last status ${item.status}. Company ${item.companyName || "—"}. Location ${item.clientLocation || item.storeLocation || "—"}. Handed to ${item.handedTo || "—"}. Quantity ${item.quantity} ${item.unit}.`,
   });
+  touchItems(req.db);
   saveDb(req.db);
   res.json({ ok: true });
 });
@@ -1411,6 +1481,7 @@ function reportSummary(items, audit, range) {
     attention: items.filter((item) => item.condition === "Poor" || item.condition === "Damaged" || item.status === "Missing").length,
     overdue: items.filter((item) => item.expectedReturn && item.expectedReturn < today && (item.status === "Issued to site" || item.status === "On site")).length,
     changes,
+    stockValue: Number(items.reduce((sum, item) => sum + (item.lineValue == null ? 0 : Number(item.lineValue)), 0).toFixed(2)),
   };
 }
 
@@ -1442,7 +1513,7 @@ app.get("/api/export/pdf", requireUser, (req, res) => {
   if (req.query.q) filters.push(`Search "${clean(req.query.q, 80)}"`);
   if (req.query.review === "1") filters.push(`Not updated in ${REVIEW_DAYS} days`);
   const pdf = buildPdf(items, {
-    subtitle: `Prepared by ${req.user.name} on ${formatStamp(new Date().toISOString())}  ·  ${filters.join(" · ")}`,
+    subtitle: `Prepared by ${req.user.name} on ${formatStamp(new Date().toISOString())}  ·  ${filters.join(" · ")}  ·  Stock value ${formatNaira(summary.stockValue)}`,
   });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="aries-store-inventory-${stamp}.pdf"`);

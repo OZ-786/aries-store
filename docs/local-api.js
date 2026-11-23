@@ -104,24 +104,48 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     throw new Error("The shared GitHub record was changed by someone else. Try again.");
   }
 
+  function chooseList(localRev, remoteRev, localList, remoteList, merge) {
+    const left = Number(localRev) || 0;
+    const right = Number(remoteRev) || 0;
+    if (left > right) return { list: localList, revision: left };
+    if (right > left) return { list: remoteList, revision: right };
+    return { list: merge(), revision: left };
+  }
+
   function mergeRecord(remote, local) {
-    const users = new Map(remote.users.map((user) => [user.id, user]));
-    for (const user of local.users) users.set(user.id, { ...users.get(user.id), ...user });
-    const items = new Map(remote.items.map((item) => [item.id, item]));
-    for (const item of local.items) {
-      const previous = items.get(item.id);
-      if (!previous || String(item.updatedAt || "") >= String(previous.updatedAt || "")) items.set(item.id, item);
-    }
+    const chosenUsers = chooseList(local.usersRevision, remote.usersRevision, local.users, remote.users, () => {
+      const users = new Map(remote.users.map((user) => [user.id, user]));
+      for (const user of local.users) users.set(user.id, { ...users.get(user.id), ...user });
+      return [...users.values()];
+    });
+    const chosenItems = chooseList(local.itemsRevision, remote.itemsRevision, local.items, remote.items, () => {
+      const items = new Map(remote.items.map((item) => [item.id, item]));
+      for (const item of local.items) {
+        const previous = items.get(item.id);
+        if (!previous || String(item.updatedAt || "") >= String(previous.updatedAt || "")) items.set(item.id, item);
+      }
+      return [...items.values()];
+    });
     const audit = new Map();
     for (const entry of [...remote.audit, ...local.audit]) audit.set(entry.id, entry);
     memory = {
-      users: [...users.values()],
-      items: [...items.values()],
+      users: chosenUsers.list,
+      usersRevision: chosenUsers.revision,
+      items: chosenItems.list,
+      itemsRevision: chosenItems.revision,
       audit: [...audit.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 2000),
       resets: local.resets || remote.resets || [],
       seq: Math.max(remote.seq || 1, local.seq || 1),
     };
     Object.assign(local, memory);
+  }
+
+  function touchUsers(db) {
+    db.usersRevision = Date.now();
+  }
+
+  function touchItems(db) {
+    db.itemsRevision = Date.now();
   }
 
   function clean(value, max) {
@@ -232,7 +256,17 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       expectedReturn: parseDate(body.expectedReturn),
       serialNumber: clean(body.serialNumber, 80),
       notes: cleanBlock(body.notes, 2000),
+      unitPrice: null,
+      lineValue: null,
     };
+    if (body.unitPrice == null || String(body.unitPrice).trim() === "") {
+      value.unitPrice = null;
+    } else {
+      const price = Number(String(body.unitPrice).replace(/[₦,\s]/g, ""));
+      if (!Number.isFinite(price) || price < 0 || price > 1000000000) errors.push("Enter a unit price of zero or more, or leave it blank.");
+      else value.unitPrice = Math.round(price * 100) / 100;
+    }
+    value.lineValue = value.unitPrice == null || quantity == null ? null : Math.round(quantity * value.unitPrice * 100) / 100;
     if (tag && !/^[A-Z0-9][A-Z0-9\-_/]{0,31}$/.test(tag)) errors.push("Tag can use letters, numbers, and dashes only.");
     if (!name) errors.push("Enter the item name.");
     if (!/^[A-Za-z0-9][A-Za-z0-9 &/+\-]{0,39}$/.test(section)) errors.push("Choose a section, or enter a custom section using letters, numbers, and spaces.");
@@ -256,7 +290,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     tag: "Tag", name: "Name", section: "Section", quantity: "Quantity", unit: "Unit", condition: "Condition",
     status: "Status", storeLocation: "Store location", companyName: "Company", clientLocation: "Client location",
     handedTo: "Handed to", handedToPhone: "Phone", issuedOn: "Issued on", expectedReturn: "Expected return",
-    serialNumber: "Serial number", notes: "Notes",
+    serialNumber: "Serial number", notes: "Notes", unitPrice: "Unit price", lineValue: "Value",
   };
 
   function describeChanges(before, after) {
@@ -286,7 +320,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
   }
 
   function buildCsv(items, summary) {
-    const headers = ["Tag", "Name", "Section", "Quantity", "Unit", "Condition", "Status", "Store location", "Company name", "Client location", "Handed to", "Phone", "Issued on", "Expected return", "Serial number", "Notes", "Created by", "Created at", "Last updated by", "Last updated at"];
+    const headers = ["Tag", "Name", "Section", "Quantity", "Unit", "Condition", "Status", "Store location", "Company name", "Client location", "Handed to", "Phone", "Issued on", "Expected return", "Serial number", "Unit price", "Value", "Notes", "Created by", "Created at", "Last updated by", "Last updated at"];
     const lines = [];
     if (summary) {
       lines.push(["Summary", summary.label].map(csvCell).join(","));
@@ -295,7 +329,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     }
     lines.push(headers.join(","));
     for (const item of items) {
-      lines.push([item.tag, item.name, item.section, item.quantity, item.unit, item.condition, item.status, item.storeLocation, item.companyName, item.clientLocation, item.handedTo, item.handedToPhone, item.issuedOn, item.expectedReturn, item.serialNumber, item.notes, item.createdByName, item.createdAt, item.updatedByName, item.updatedAt].map(csvCell).join(","));
+      lines.push([item.tag, item.name, item.section, item.quantity, item.unit, item.condition, item.status, item.storeLocation, item.companyName, item.clientLocation, item.handedTo, item.handedToPhone, item.issuedOn, item.expectedReturn, item.serialNumber, item.unitPrice == null ? "" : item.unitPrice, item.lineValue == null ? "" : item.lineValue, item.notes, item.createdByName, item.createdAt, item.updatedByName, item.updatedAt].map(csvCell).join(","));
     }
     return `\uFEFF${lines.join("\r\n")}\r\n`;
   }
@@ -340,6 +374,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     const rowsFor = (item) => [
       ["Tag", item.tag || "—", "Section", item.section || "—"],
       ["Item", item.name || "—", "Quantity", `${item.quantity} ${item.unit}`],
+      ["Unit price", item.unitPrice == null ? "—" : `NGN ${Number(item.unitPrice).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Value", item.lineValue == null ? "—" : `NGN ${Number(item.lineValue).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
       ["Condition", item.condition || "—", "Status", item.status || "—"],
       ["Store location", item.storeLocation || "—", "Serial number", item.serialNumber || "—"],
       ["Company", item.companyName || "—", "Client location", item.clientLocation || "—"],
@@ -511,6 +546,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       const created = { id: crypto.randomUUID(), name, username, email: contact.email, phone: contact.phone, passwordHash: await hashPassword(password), role: db.users.length === 0 ? "admin" : "staff", createdAt: new Date().toISOString() };
       db.users.push(created);
       addAudit(db, { userId: user?.id || created.id, userName: user?.name || created.name, action: "account", itemId: "", tag: "", itemName: "", details: `${created.name} (@${created.username}) created an account as ${created.role}.` });
+      touchUsers(db);
       await saveDb(db);
       if (!user) sessionStorage.setItem(SID_KEY, created.id);
       return json(201, { user: publicUser(created), signedIn: !user });
@@ -554,6 +590,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       if (String(body.next || "").length < 6) return json(400, { error: "New password must be at least 6 characters." });
       if (String(body.next) !== String(body.confirm || "")) return json(400, { error: "The two passwords do not match." });
       user.passwordHash = await hashPassword(String(body.next));
+      touchUsers(db);
       await saveDb(db);
       return json(200, { ok: true });
     }
@@ -564,6 +601,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       user.email = contact.email;
       user.phone = contact.phone;
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated their company email and phone.` });
+      touchUsers(db);
       await saveDb(db);
       return json(200, { user: publicUser(user) });
     }
@@ -589,6 +627,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       target.email = contact.email;
       target.phone = contact.phone;
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated the staff account ${target.name} (@${target.username}).` });
+      touchUsers(db);
       await saveDb(db);
       return json(200, { user: publicUser(target) });
     }
@@ -603,6 +642,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
         if (entry.userId === target.id && entry.status !== "used") entry.status = "set-by-admin";
       }
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} set a new password for ${target.name}.` });
+      touchUsers(db);
       await saveDb(db);
       return json(200, { ok: true });
     }
@@ -618,6 +658,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
         return json(400, { error: "Keep at least one administrator." });
       }
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} removed the account ${removed.name} (@${removed.username}).` });
+      touchUsers(db);
       await saveDb(db);
       return json(200, { ok: true });
     }
@@ -634,6 +675,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       const item = { ...value, tag, id: crypto.randomUUID(), createdAt: now, createdBy: user.id, createdByName: user.name, updatedAt: now, updatedBy: user.id, updatedByName: user.name };
       db.items.push(item);
       addAudit(db, { userId: user.id, userName: user.name, action: "created", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} added ${item.name} (${item.tag}) to ${item.section}. Quantity ${item.quantity} ${item.unit}, ${item.condition}, ${item.status}.` });
+      touchItems(db);
       await saveDb(db);
       return json(201, { item });
     }
@@ -646,6 +688,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       item.updatedBy = user.id;
       item.updatedByName = user.name;
       addAudit(db, { userId: user.id, userName: user.name, action: "reviewed", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} confirmed ${item.name} (${item.tag}) is up to date.` });
+      touchItems(db);
       await saveDb(db);
       return json(200, { item });
     }
@@ -663,6 +706,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       item.updatedBy = user.id;
       item.updatedByName = user.name;
       addAudit(db, { userId: user.id, userName: user.name, action: changes ? "updated" : "reviewed", itemId: item.id, tag: item.tag, itemName: item.name, details: changes ? `${user.name} updated ${item.name} (${item.tag}). ${changes}` : `${user.name} confirmed ${item.name} (${item.tag}) is up to date.` });
+      touchItems(db);
       await saveDb(db);
       return json(200, { item });
     }
@@ -671,6 +715,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       if (index < 0) return json(404, { error: "Item not found." });
       const [item] = db.items.splice(index, 1);
       addAudit(db, { userId: user.id, userName: user.name, action: "deleted", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} removed ${item.name} (${item.tag}).` });
+      touchItems(db);
       await saveDb(db);
       return json(200, { ok: true });
     }
