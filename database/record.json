@@ -2043,34 +2043,6 @@
       "updatedByName": "Abdul-Waliyi Muhammed"
     },
     {
-      "tag": "AST-0075",
-      "name": "Test network unit",
-      "section": "Network equipment",
-      "quantity": 1,
-      "unit": "pcs",
-      "condition": "Good",
-      "status": "In store",
-      "storeLocation": "OFFICE OPEBI",
-      "companyName": "",
-      "clientLocation": "",
-      "handedTo": "",
-      "handedToPhone": "",
-      "issuedOn": "",
-      "expectedReturn": "",
-      "serialNumber": "SN-A",
-      "notes": "",
-      "brand": "Aries Test Brand",
-      "unitPrice": 10,
-      "lineValue": 10,
-      "id": "e48219a5-0f18-4bc4-97fe-ac5598f3f94c",
-      "createdAt": "2026-11-25T09:46:51.822Z",
-      "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-25T09:46:51.822Z",
-      "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
-    },
-    {
       "tag": "AST-0076",
       "name": "Test network unit",
       "section": "Network equipment",
@@ -2127,7 +2099,7 @@
       "updatedByName": "Abdul-Waliyi Muhammed"
     }
   ],
-  "itemsRevision": 1795600011822,
+  "itemsRevision": 1795600018935,
   "catalog": {
     "brands": [
       "Aries Test Brand"
@@ -2166,6 +2138,18 @@
   },
   "catalogRevision": 1795600009644,
   "audit": [
+    {
+      "id": "4dad37d8-630f-4803-8e03-b93a9ddca8c1",
+      "at": "2026-11-25T09:46:58.935Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "deleted",
+      "itemId": "e48219a5-0f18-4bc4-97fe-ac5598f3f94c",
+      "tag": "AST-0075",
+      "itemName": "Test network unit",
+      "details": "Abdul-Waliyi Muhammed removed Test network unit (AST-0075). Last status In store. Company —. Location OFFICE OPEBI. Handed to —. Quantity 1 pcs."
+    },
     {
       "id": "77d97c76-5a55-4179-b91a-7548a8f2eeb4",
       "at": "2026-11-25T09:46:56.423Z",
