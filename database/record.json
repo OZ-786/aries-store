@@ -2069,16 +2069,27 @@
       "FLOWER GATE",
       "FLWRGATE SAGAMU",
       "FRIESLAND",
-      "FRIESLAND IKD",
       "MEDCOURT",
       "SAGAMU",
       "SUPPORT/MAINT"
     ]
   },
-  "catalogRevision": 1795619294116,
+  "catalogRevision": 1795619298166,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "31314c02-2917-47c7-acb3-8c0f732ef1be",
+      "at": "2026-11-25T15:08:18.166Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "b532b2eb-05bf-4d78-8cb5-519155d5de5e",
       "at": "2026-11-25T15:08:14.116Z",
