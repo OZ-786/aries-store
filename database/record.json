@@ -2070,11 +2070,14 @@
       "FLWRGATE SAGAMU",
       "FRIESLAND",
       "FRIESLAND IKD",
+      "FRIESLAND OGBA",
+      "GUINNESS OGBA",
       "MEDCOURT",
-      "SAGAMU"
+      "SAGAMU",
+      "SUPPORT/MAINT"
     ]
   },
-  "catalogRevision": 1795619305995,
+  "catalogRevision": 1795619327292,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
