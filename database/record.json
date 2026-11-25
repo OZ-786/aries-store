@@ -2034,9 +2034,7 @@
   ],
   "itemsRevision": 1795600024030,
   "catalog": {
-    "brands": [
-      "Cisco"
-    ],
+    "brands": [],
     "locations": [
       "OFFICE OPEBI",
       "OJOTA",
@@ -2069,8 +2067,20 @@
       "WIRE FAULT INDICATOR[NEW]"
     ]
   },
-  "catalogRevision": 1795600126628,
+  "catalogRevision": 1795600128953,
   "audit": [
+    {
+      "id": "521300c1-1f4b-4026-b368-28955e5d39f3",
+      "at": "2026-11-25T09:48:48.953Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "9fc1355e-428b-4adf-ac61-665d67849943",
       "at": "2026-11-25T09:48:29.187Z",
