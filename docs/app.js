@@ -20,6 +20,7 @@ const state = {
   authMode: "login",
   needsSetup: false,
   items: [],
+  catalog: { brands: [], locations: [], tools: [] },
   audit: [],
   users: [],
   filters: { q: "", section: "All", status: "All", condition: "All", review: false, period: "all", from: "", to: "" },
@@ -363,14 +364,16 @@ function shellHtml() {
         <div class="top-spacer"></div>
         <div class="who">
           <strong>${esc(state.user.name)}</strong>
-          <span>${esc(state.user.role)}</span>
+          <span>${esc(state.user.role)}${state.user.role !== "admin" && state.user.access === "view" ? " · view only" : ""}</span>
         </div>
         <button class="btn small ghost" id="logout" style="color:white;border-color:#3a3a3a">Sign out</button>
       </header>
       <div class="layout">
         <nav class="nav">
           <button data-view="inventory" class="${state.view === "inventory" ? "active" : ""}">Inventory</button>
+          <button data-view="analysis" class="${state.view === "analysis" ? "active" : ""}">Analysis</button>
           <button data-view="activity" class="${state.view === "activity" ? "active" : ""}">Activity</button>
+          ${state.user.role === "admin" ? `<button data-view="lists" class="${state.view === "lists" ? "active" : ""}">Lists</button>` : ""}
           <button data-view="accounts" class="${state.view === "accounts" ? "active" : ""}">Accounts</button>
           <p class="foot">RC 680979<br />One shared record. Each change is tagged with the account that made it.</p>
         </nav>
@@ -409,7 +412,9 @@ function renderView() {
   const main = document.getElementById("main");
   if (!main) return;
   if (state.view === "inventory") main.innerHTML = inventoryHtml();
+  if (state.view === "analysis") main.innerHTML = analysisHtml();
   if (state.view === "activity") main.innerHTML = activityHtml();
+  if (state.view === "lists") main.innerHTML = listsHtml();
   if (state.view === "accounts") main.innerHTML = accountsHtml();
   bindView();
 }
@@ -430,6 +435,52 @@ function customSectionValue(section) {
   return "";
 }
 
+function companyNames() {
+  const seen = new Map();
+  for (const item of state.items) {
+    const name = String(item.companyName || "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (!seen.has(key)) seen.set(key, name);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+}
+
+function canModify() {
+  return state.user && (state.user.role === "admin" || state.user.access !== "view");
+}
+
+function catalogList(kind) {
+  return Array.isArray(state.catalog?.[kind]) ? state.catalog[kind] : [];
+}
+
+function pickField(kind, label, name, current, allowNew) {
+  const names = catalogList(kind);
+  const match = names.find((entry) => entry.toLowerCase() === String(current || "").trim().toLowerCase());
+  const adding = allowNew && current && !match;
+  const options = [
+    `<option value="">Choose</option>`,
+    ...names.map((entry) => `<option value="${esc(entry)}" ${match === entry ? "selected" : ""}>${esc(entry)}</option>`),
+    allowNew ? `<option value="__new__" ${adding ? "selected" : ""}>Add a new one</option>` : "",
+  ];
+  return `
+    <label>${label}<select name="${name}" id="${name}-select">${options.join("")}</select></label>
+    <label id="new-${name}-wrap">New ${label.toLowerCase()}<input name="new${name}" id="new-${name}" maxlength="160" value="${esc(adding ? current : "")}" /></label>`;
+}
+
+function companyField(current) {
+  const names = companyNames();
+  const match = names.find((name) => name.toLowerCase() === String(current || "").trim().toLowerCase());
+  const adding = current && !match;
+  const options = [
+    `<option value="" ${!current ? "selected" : ""}>No company</option>`,
+    ...names.map((name) => `<option value="${esc(name)}" ${match === name ? "selected" : ""}>${esc(name)}</option>`),
+    `<option value="__new__" ${adding ? "selected" : ""}>Add a new company</option>`,
+  ];
+  return `
+    <label>Company name<select name="companyName" id="company-select">${options.join("")}</select></label>
+    <label id="new-company-wrap">New company<input name="newCompany" id="new-company" maxlength="160" placeholder="Type the company name" value="${esc(adding ? current : "")}" /></label>`;
+}
 function sectionOptions() {
   const extras = state.items
     .map((item) => item.section)
@@ -495,7 +546,7 @@ function inventoryHtml() {
       <div class="btn-row">
         <a class="btn ghost" id="export-csv" href="${esc(exportHref("csv"))}">Export CSV</a>
         <a class="btn ghost" id="export-pdf" href="${esc(exportHref("pdf"))}">Export PDF</a>
-        <button class="btn primary" id="add-item">Add item</button>
+        ${canModify() ? `<button class="btn primary" id="add-item">Add item</button>` : ""}
       </div>
     </div>
     <section class="stats" id="stats">
@@ -540,7 +591,7 @@ function itemCells(item) {
     : item.storeLocation || "Store";
   return `
     <td data-label="Tag" class="tag">${esc(item.tag)}</td>
-    <td data-label="Item">${esc(item.name)}${item.serialNumber ? `<span class="sub">${esc(item.serialNumber)}</span>` : ""}</td>
+    <td data-label="Item">${esc(item.name)}${item.brand ? `<span class="sub">${esc(item.brand)}</span>` : ""}${item.serialNumber ? `<span class="sub">${esc(item.serialNumber)}</span>` : ""}</td>
     <td data-label="Section">${esc(item.section)}</td>
     <td data-label="Qty">${esc(item.quantity)} ${esc(item.unit)}</td>
     <td data-label="Unit price">${money(item.unitPrice)}</td>
@@ -706,6 +757,7 @@ function bindView() {
   bindDrawer();
   bindModal();
   bindAccounts();
+  bindLists();
   bindActivity();
   const highlighted = state.highlightId && document.querySelector(`tr[data-id="${state.highlightId}"]`);
   if (highlighted) highlighted.scrollIntoView({ block: "center" });
@@ -753,6 +805,7 @@ function drawerHtml() {
           ${pair("Phone", esc(item.handedToPhone))}
           ${pair("Issued on", esc(item.issuedOn))}
           ${pair("Expected return", esc(item.expectedReturn))}
+          ${pair("Brand", esc(item.brand))}
           ${pair("Serial number", esc(item.serialNumber))}
           ${pair("Added by", `${esc(item.createdByName)}<span class="sub">${esc(stamp(item.createdAt))}</span>`)}
           ${pair("Last update", `${esc(item.updatedByName)}<span class="sub">${esc(stamp(item.updatedAt))}</span>`)}
@@ -760,10 +813,21 @@ function drawerHtml() {
         <p class="section-title">Notes</p>
         <p class="notes-block">${esc(item.notes || "No notes.")}</p>
         <div class="btn-row" style="margin-top:18px">
+          ${canModify() ? `<button class="btn primary" id="take-out">Take out of store</button>
+          <button class="btn" id="bring-in">Bring into store</button>
           <button class="btn primary" id="edit-item">Update record</button>
           <button class="btn ghost" id="review-item">Confirm up to date</button>
-          <button class="btn danger" id="delete-item">Remove</button>
+          <button class="btn danger" id="delete-item">Remove</button>` : `<p class="lede">This account can view the record. Ask the administrator if you need to change it.</p>`}
         </div>
+        ${canModify() ? `<div id="out-box" hidden class="panel" style="margin-top:12px">
+          <p class="section-title">Taking it out</p>
+          <div class="form-grid">
+            <label>Company<input id="out-company" maxlength="160" value="${esc(item.companyName || "")}" /></label>
+            <label>Place it is going<input id="out-place" maxlength="200" value="${esc(item.clientLocation || "")}" /></label>
+            <label>Who is taking it<input id="out-person" maxlength="120" value="${esc(item.handedTo || "")}" /></label>
+            <button class="btn primary" id="confirm-out" type="button">Confirm take out</button>
+          </div>
+        </div>` : ""}
       </aside>
     </div>`;
 }
@@ -780,7 +844,9 @@ function bindDrawer() {
   document.getElementById("drawer-back").onclick = (event) => {
     if (event.target.id === "drawer-back") shut();
   };
-  document.getElementById("edit-item").onclick = () => {
+  const edit = document.getElementById("edit-item");
+  if (!edit) return;
+  edit.onclick = () => {
     state.modal = { mode: "edit", id: state.selectedId };
     state.error = "";
     draw();
@@ -804,6 +870,40 @@ function bindDrawer() {
       await api(`/api/items/${item.id}`, { method: "DELETE" });
       state.items = state.items.filter((entry) => entry.id !== item.id);
       state.selectedId = null;
+      draw();
+    } catch (error) {
+      state.error = error.message;
+      draw();
+    }
+  };
+  document.getElementById("bring-in").onclick = async () => {
+    try {
+      const data = await api(`/api/items/${state.selectedId}/movement`, { method: "POST", body: { direction: "in" } });
+      replaceItem(data.item);
+      state.notice = `${data.item.name} (${data.item.tag}) is back in the store.`;
+      draw();
+    } catch (error) {
+      state.error = error.message;
+      draw();
+    }
+  };
+  document.getElementById("take-out").onclick = () => {
+    const box = document.getElementById("out-box");
+    if (box) box.hidden = false;
+  };
+  document.getElementById("confirm-out").onclick = async () => {
+    try {
+      const data = await api(`/api/items/${state.selectedId}/movement`, {
+        method: "POST",
+        body: {
+          direction: "out",
+          companyName: document.getElementById("out-company").value,
+          clientLocation: document.getElementById("out-place").value,
+          handedTo: document.getElementById("out-person").value,
+        },
+      });
+      replaceItem(data.item);
+      state.notice = `${data.item.name} (${data.item.tag}) has left the store.`;
       draw();
     } catch (error) {
       state.error = error.message;
@@ -834,6 +934,7 @@ function modalHtml() {
     issuedOn: "",
     expectedReturn: "",
     serialNumber: "",
+    brand: "",
     notes: "",
     updatedAt: "",
   };
@@ -853,16 +954,20 @@ function modalHtml() {
         <input type="hidden" name="updatedAt" value="${esc(item.updatedAt || "")}" />
         <p class="section-title">Item</p>
         <div class="form-grid two">
-          ${field("tag", "Tag", item.tag, 'maxlength="32"')}
-          ${field("name", "Name", item.name, 'required maxlength="120" placeholder="Router, Cat6 box, LAN tester"')}
+          ${field("tag", "Tag", item.tag, 'maxlength="32" id="tag-input"')}
+          <label id="name-wrap">Name<input name="name" id="item-name" required maxlength="120" placeholder="Router, Cat6 box, LAN tester" value="${esc(item.name)}" /></label>
+          <label id="tool-name-wrap">Tool<select name="toolName" id="tool-name"></select></label>
+          <label id="new-tool-wrap">New tool<input name="newTool" id="new-tool" maxlength="160" /></label>
+          ${pickField("brands", "Brand", "brand", item.brand, state.user.role === "admin")}
           <label>Section<select name="section" id="section-select">${sectionFieldOptions(item.section)}</select></label>
           <label id="custom-section-wrap">Custom section<input name="customSection" id="custom-section" maxlength="40" placeholder="e.g. Radio equipment" value="${esc(customSectionValue(item.section))}" /></label>
-          ${field("serialNumber", "Serial number", item.serialNumber, 'maxlength="80"')}
-          <p class="hint wide">Network equipment covers routers, firewalls, access points, and switches. Cables & materials covers Cat6, fiber, and patch cords. Tools covers a LAN tester, fiber splicer, and other tools. Choose Custom section for anything else.</p>
+          <label id="one-serial-wrap">Serial number<input name="serialNumber" id="one-serial" maxlength="80" value="${esc(item.serialNumber)}" /></label>
+          <div class="wide" id="unit-serials"></div>
+          <p class="hint wide">For network equipment, quantity counts whole units: 1, 2, 3, 4. Each unit gets its own tag and serial number. Staff pick the brand, the tool, and the store location from the lists the administrator created.</p>
         </div>
         <p class="section-title">Quantity, price, condition, status</p>
         <div class="form-grid two">
-          ${field("quantity", "Quantity", item.quantity, 'type="number" min="0" step="0.01" required')}
+          ${field("quantity", "Quantity", item.quantity, 'type="number" min="1" step="1" required id="quantity-input"')}
           <label>Unit<select name="unit">${options(UNITS, item.unit)}</select></label>
           ${field("unitPrice", "Unit price (₦)", item.unitPrice ?? "", 'type="number" min="0" step="0.01" placeholder="Leave blank if unknown"')}
           <p class="hint">Value is the quantity multiplied by the unit price. Prices are in naira.</p>
@@ -871,9 +976,9 @@ function modalHtml() {
         </div>
         <p class="section-title">Where it is</p>
         <div class="form-grid">
-          ${field("storeLocation", "Store location", item.storeLocation, 'maxlength="160" placeholder="Main store, Shelf B3"')}
+          ${pickField("locations", "Store location", "storeLocation", item.storeLocation, state.user.role === "admin")}
           <div class="form-grid two">
-            ${field("companyName", "Company name", item.companyName, 'maxlength="160" placeholder="Client company"')}
+            ${companyField(item.companyName)}
             ${field("clientLocation", "Client location", item.clientLocation, 'maxlength="200" placeholder="Site address or area"')}
           </div>
         </div>
@@ -893,25 +998,36 @@ function modalHtml() {
     </div>`;
 }
 
+function chosenList(data, name) {
+  return data.get(name) === "__new__" ? data.get(`new${name}`) : data.get(name);
+}
+
 function formValue(form) {
   const data = new FormData(form);
+  const section = data.get("section") === "__custom__" ? data.get("customSection") : data.get("section");
+  const network = section === "Network equipment";
+  const quantity = Number(data.get("quantity"));
+  const serials = [...form.querySelectorAll("[name=unitSerial]")].map((input) => input.value);
+  const toolName = data.get("toolName") === "__new__" ? data.get("newTool") : data.get("toolName");
   return {
     tag: data.get("tag"),
-    name: data.get("name"),
-    section: data.get("section") === "__custom__" ? data.get("customSection") : data.get("section"),
+    name: section === "Tools" ? toolName : data.get("name"),
+    section,
     quantity: data.get("quantity"),
     unit: data.get("unit"),
     unitPrice: data.get("unitPrice"),
     condition: data.get("condition"),
     status: data.get("status"),
-    storeLocation: data.get("storeLocation"),
-    companyName: data.get("companyName"),
+    storeLocation: chosenList(data, "storeLocation"),
+    companyName: data.get("companyName") === "__new__" ? data.get("newCompany") : data.get("companyName"),
     clientLocation: data.get("clientLocation"),
     handedTo: data.get("handedTo"),
     handedToPhone: data.get("handedToPhone"),
     issuedOn: data.get("issuedOn"),
     expectedReturn: data.get("expectedReturn"),
-    serialNumber: data.get("serialNumber"),
+    serialNumber: network && quantity > 1 ? serials[0] || "" : data.get("serialNumber"),
+    serials,
+    brand: chosenList(data, "brand"),
     notes: data.get("notes"),
     updatedAt: data.get("updatedAt"),
   };
@@ -943,6 +1059,98 @@ function bindModal() {
   };
   if (sectionSelect) sectionSelect.onchange = syncCustom;
   syncCustom();
+  const companySelect = document.getElementById("company-select");
+  const newCompanyWrap = document.getElementById("new-company-wrap");
+  const syncCompany = () => {
+    if (!companySelect || !newCompanyWrap) return;
+    const adding = companySelect.value === "__new__";
+    newCompanyWrap.hidden = !adding;
+    const input = document.getElementById("new-company");
+    if (input) input.required = adding;
+  };
+  if (companySelect) companySelect.onchange = syncCompany;
+  syncCompany();
+  const syncExtra = (selectId, wrapId, inputId) => {
+    const select = document.getElementById(selectId);
+    const wrap = document.getElementById(wrapId);
+    const apply = () => {
+      if (!select || !wrap) return;
+      const adding = select.value === "__new__";
+      wrap.hidden = !adding;
+      const input = document.getElementById(inputId);
+      if (input) input.required = adding;
+    };
+    if (select) select.onchange = apply;
+    apply();
+  };
+  syncExtra("brand-select", "new-brand-wrap", "new-brand");
+  syncExtra("storeLocation-select", "new-storeLocation-wrap", "new-storeLocation");
+  const quantityInput = document.getElementById("quantity-input");
+  const paintUnits = () => {
+    const section = sectionSelect ? sectionSelect.value : "";
+    const tools = section === "Tools";
+    const nameWrap = document.getElementById("name-wrap");
+    const toolWrap = document.getElementById("tool-name-wrap");
+    const newToolWrap = document.getElementById("new-tool-wrap");
+    const nameInput = document.getElementById("item-name");
+    const toolSelect = document.getElementById("tool-name");
+    if (nameWrap) nameWrap.hidden = tools;
+    if (toolWrap) toolWrap.hidden = !tools;
+    if (nameInput) nameInput.required = !tools;
+    if (tools && toolSelect && !toolSelect.options.length) {
+      const current = nameInput ? nameInput.value : "";
+      const names = catalogList("tools");
+      const admin = state.user.role === "admin";
+      toolSelect.innerHTML = [
+        `<option value="">Choose</option>`,
+        ...names.map((entry) => `<option value="${esc(entry)}" ${entry === current ? "selected" : ""}>${esc(entry)}</option>`),
+        admin ? `<option value="__new__">Add a new one</option>` : "",
+      ].join("");
+      toolSelect.onchange = () => {
+        const adding = toolSelect.value === "__new__";
+        if (newToolWrap) newToolWrap.hidden = !adding;
+        const input = document.getElementById("new-tool");
+        if (input) input.required = adding;
+      };
+    }
+    if (newToolWrap && toolSelect) newToolWrap.hidden = toolSelect.value !== "__new__";
+    if (toolSelect) toolSelect.required = tools;
+    const network = section === "Network equipment";
+    if (quantityInput) {
+      quantityInput.step = network ? "1" : "0.01";
+      quantityInput.min = network ? "1" : "0";
+    }
+    const count = Math.max(1, Math.round(Number(quantityInput ? quantityInput.value : 1) || 1));
+    const multi = network && count > 1 && !editingMode();
+    const oneSerial = document.getElementById("one-serial-wrap");
+    const box = document.getElementById("unit-serials");
+    if (oneSerial) oneSerial.hidden = multi;
+    if (!box) return;
+    box.hidden = !multi;
+    if (!multi) {
+      box.innerHTML = "";
+      return;
+    }
+    const kept = [...box.querySelectorAll("[name=unitSerial]")].map((input) => input.value);
+    const base = document.getElementById("tag-input");
+    const start = base && /^AST-(\d+)$/i.test(base.value) ? Number(/^AST-(\d+)$/i.exec(base.value)[1]) : null;
+    box.innerHTML = Array.from({ length: Math.min(count, 100) }, (_, index) => {
+      const tag = start == null ? `Unit ${index + 1}` : `AST-${String(start + index).padStart(4, "0")}`;
+      return `<label>Serial for ${esc(tag)}<input name="unitSerial" maxlength="80" required value="${esc(kept[index] || "")}" /></label>`;
+    }).join("");
+  };
+  const editingMode = () => state.modal && state.modal.mode === "edit";
+  if (sectionSelect) {
+    const previous = sectionSelect.onchange;
+    sectionSelect.onchange = () => {
+      if (previous) previous();
+      paintUnits();
+    };
+  }
+  if (quantityInput) quantityInput.oninput = paintUnits;
+  const tagInput = document.getElementById("tag-input");
+  if (tagInput) tagInput.oninput = paintUnits;
+  paintUnits();
   document.getElementById("close-modal").onclick = close;
   document.getElementById("cancel-modal").onclick = close;
   document.getElementById("modal-back").onclick = (event) => {
@@ -956,7 +1164,15 @@ function bindModal() {
     try {
       if (state.modal.mode === "create") {
         const data = await api("/api/items", { method: "POST", body });
-        showInList(data.item, true);
+        if (data.items && data.items.length > 1) {
+          await refreshItems();
+          showInList(data.items[0], true);
+          state.notice = `${data.items.length} network units were added, from ${data.items[0].tag} to ${data.items[data.items.length - 1].tag}.`;
+          draw();
+        } else {
+          if (state.user.role === "admin") await refreshItems();
+          showInList(data.item, true);
+        }
       } else {
         const data = await api(`/api/items/${state.modal.id}`, { method: "PUT", body });
         showInList(data.item, false);
@@ -1086,6 +1302,124 @@ function bindActivity() {
   };
 }
 
+function analysisHtml() {
+  const items = state.items;
+  const sum = (list) => list.reduce((total, item) => total + (item.lineValue == null ? 0 : Number(item.lineValue)), 0);
+  const inStore = items.filter((item) => item.status === "In store" || item.status === "Returned");
+  const out = items.filter((item) => item.status === "Issued to site" || item.status === "On site");
+  const unpriced = items.filter((item) => item.lineValue == null).length;
+  const groups = (key) => {
+    const map = new Map();
+    for (const item of items) {
+      const name = item[key] || "Not set";
+      const row = map.get(name) || { name, count: 0, quantity: 0, value: 0 };
+      row.count += 1;
+      row.quantity += Number(item.quantity) || 0;
+      row.value += item.lineValue == null ? 0 : Number(item.lineValue);
+      map.set(name, row);
+    }
+    return [...map.values()].sort((a, b) => b.value - a.value);
+  };
+  const table = (rows) => rows.map((row) => `<tr><td>${esc(row.name)}</td><td>${row.count}</td><td>${Number(row.quantity.toFixed(2))}</td><td>${money(row.value)}</td></tr>`).join("") || `<tr><td colspan="4">Nothing recorded yet.</td></tr>`;
+  return `
+    <div class="page-head">
+      <div>
+        <h2>Analysis</h2>
+        <p>Stock value is quantity times unit price. Use these figures when auditing the store or preparing tax records.</p>
+      </div>
+    </div>
+    <section class="stats">
+      <div class="stat"><b>${money(sum(items))}</b><span>Total stock value</span></div>
+      <div class="stat"><b>${money(sum(inStore))}</b><span>Value in the store</span></div>
+      <div class="stat"><b>${money(sum(out))}</b><span>Value out of the store</span></div>
+      <div class="stat"><b>${out.length}</b><span>Items currently out</span></div>
+      <div class="stat"><b>${unpriced}</b><span>Items with no price</span></div>
+    </section>
+    <div class="panel" style="margin-top:16px">
+      <h3>By section</h3>
+      <div class="table-wrap"><table><thead><tr><th>Section</th><th>Records</th><th>Quantity</th><th>Value</th></tr></thead><tbody>${table(groups("section"))}</tbody></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>By company</h3>
+      <div class="table-wrap"><table><thead><tr><th>Company</th><th>Records</th><th>Quantity</th><th>Value</th></tr></thead><tbody>${table(groups("companyName"))}</tbody></table></div>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <h3>By store location</h3>
+      <div class="table-wrap"><table><thead><tr><th>Location</th><th>Records</th><th>Quantity</th><th>Value</th></tr></thead><tbody>${table(groups("storeLocation"))}</tbody></table></div>
+    </div>`;
+}
+
+function listsHtml() {
+  if (state.user.role !== "admin") return `<div class="page-head"><h2>Lists</h2><p>Only the administrator can change these lists.</p></div>`;
+  const block = (kind, title, hint) => `
+    <form class="panel" data-list="${kind}" style="margin-bottom:16px">
+      <h3>${title}</h3>
+      <p class="lede">${hint}</p>
+      ${state.error && state.view === "lists" ? "" : ""}
+      <div class="form-grid">
+        ${catalogList(kind).map((name) => `<div class="btn-row"><span>${esc(name)}</span><button class="btn small danger" type="button" data-remove-entry="${esc(name)}">Remove</button></div>`).join("") || "<p>None yet.</p>"}
+        <label>Add<input name="entry" maxlength="160" required /></label>
+        <button class="btn primary" type="submit">Add to the list</button>
+      </div>
+    </form>`;
+  return `
+    <div class="page-head"><div><h2>Lists for staff</h2><p>Staff can only choose brands, store locations, and tools that you put here. You can still add a new one while you are adding an item.</p></div></div>
+    ${state.notice ? `<div class="notice" style="margin-bottom:12px">${esc(state.notice)}</div>` : ""}
+    ${state.error ? `<div class="alert" style="margin-bottom:12px">${esc(state.error)}</div>` : ""}
+    ${block("brands", "Brands", "Shown in the brand menu when anyone adds an item.")}
+    ${block("locations", "Store locations", "Shown as the store location when anyone adds an item.")}
+    ${block("tools", "Tools", "Shown as the item name when the section is Tools.")}`;
+}
+
+async function saveCatalog(next) {
+  const data = await api("/api/catalog", { method: "PUT", body: next });
+  state.catalog = data.catalog;
+}
+
+function bindLists() {
+  document.querySelectorAll("[data-list]").forEach((form) => {
+    const kind = form.dataset.list;
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const entry = new FormData(form).get("entry");
+      const next = {
+        brands: catalogList("brands"),
+        locations: catalogList("locations"),
+        tools: catalogList("tools"),
+      };
+      next[kind] = [...next[kind], entry];
+      try {
+        await saveCatalog(next);
+        state.notice = "The list is updated. Staff will see it when they add an item.";
+        state.error = "";
+        draw();
+      } catch (error) {
+        state.error = error.message;
+        draw();
+      }
+    };
+    form.querySelectorAll("[data-remove-entry]").forEach((button) => {
+      button.onclick = async () => {
+        const next = {
+          brands: catalogList("brands"),
+          locations: catalogList("locations"),
+          tools: catalogList("tools"),
+        };
+        next[kind] = next[kind].filter((name) => name !== button.dataset.removeEntry);
+        try {
+          await saveCatalog(next);
+          state.notice = "Removed from the list.";
+          state.error = "";
+          draw();
+        } catch (error) {
+          state.error = error.message;
+          draw();
+        }
+      };
+    });
+  });
+}
+
 function accountsHtml() {
   const pending = state.user.role === "admin" ? state.resets.filter((entry) => entry.status === "needs-admin" || entry.status === "open") : [];
   return `
@@ -1139,6 +1473,7 @@ function accountsHtml() {
           return `<article class="person">
             <strong>${esc(user.name)}</strong>
             <span class="badge ${user.role === "admin" ? "orange" : ""}">${esc(user.role)}</span>
+            ${user.role !== "admin" ? `<span class="badge">${user.access === "view" ? "View only" : "Can modify"}</span>` : ""}
             <span class="sub">@${esc(user.username)}${user.email ? ` · ${esc(user.email)}` : " · no company email"}${user.phone ? ` · ${esc(user.phone)}` : ""}</span>
             <span class="sub">Joined ${esc(stamp(user.createdAt))}${self ? " · this is your account" : ""}</span>
             ${manage ? `<form class="manage" data-manage="${user.id}">
@@ -1146,7 +1481,11 @@ function accountsHtml() {
                 <label>Full name<input name="name" value="${esc(user.name)}" required /></label>
                 <label>Company email<input name="email" type="email" value="${esc(user.email || "")}" placeholder="optional" /></label>
                 <label>Phone<input name="phone" value="${esc(user.phone || "")}" placeholder="optional" /></label>
-                <p class="lede">${user.role === "admin" ? "This is the only administrator account." : "Staff account. It cannot be made an administrator."}</p>
+                ${user.role === "admin" ? "" : `<label>Access<select name="access">
+                  <option value="edit" ${user.access !== "view" ? "selected" : ""}>Can modify the store</option>
+                  <option value="view" ${user.access === "view" ? "selected" : ""}>View only</option>
+                </select></label>`}
+                <p class="lede">${user.role === "admin" ? "This is the only administrator account." : "Staff account. View only can see the store. Can modify can add items, take them out, and bring them back."}</p>
                 <button class="btn small" type="submit">Save account</button>
               </div>
             </form>
@@ -1246,7 +1585,7 @@ function bindAccounts() {
       try {
         const saved = await api(`/api/users/${form.dataset.manage}`, {
           method: "PUT",
-          body: { name: data.get("name"), email: data.get("email"), phone: data.get("phone") },
+          body: { name: data.get("name"), email: data.get("email"), phone: data.get("phone"), access: data.get("access") || "edit" },
         });
         if (saved.user.id === state.user.id) state.user = saved.user;
         state.notice = `Account updated for ${person ? person.name : saved.user.name}.`;
@@ -1303,6 +1642,7 @@ function bindAccounts() {
 async function refreshItems() {
   const data = await api("/api/items");
   state.items = data.items;
+  state.catalog = data.catalog || state.catalog;
   state.reviewDays = data.reviewDays || 30;
 }
 

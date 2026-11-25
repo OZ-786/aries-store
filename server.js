@@ -49,6 +49,7 @@ const FIELD_LABELS = {
   notes: "Notes",
   unitPrice: "Unit price",
   lineValue: "Value",
+  brand: "Brand",
 };
 
 const sessions = new Map();
@@ -87,6 +88,10 @@ function normalizeDb(db) {
   db.audit ||= [];
   db.resets ||= [];
   db.seq ||= 1;
+  db.catalog ||= { brands: [], locations: [], tools: [] };
+  db.catalog.brands ||= [];
+  db.catalog.locations ||= [];
+  db.catalog.tools ||= [];
   return db;
 }
 
@@ -112,6 +117,7 @@ function mergeRecord(local, remote) {
     }
     return [...items.values()];
   });
+  const chosenCatalog = chooseCatalog(local, remote);
   const audit = new Map();
   for (const entry of [...remote.audit, ...local.audit]) audit.set(entry.id, entry);
   return normalizeDb({
@@ -119,6 +125,8 @@ function mergeRecord(local, remote) {
     usersRevision: chosenUsers.revision,
     items: chosenItems.list,
     itemsRevision: chosenItems.revision,
+    catalog: chosenCatalog.catalog,
+    catalogRevision: chosenCatalog.revision,
     audit: [...audit.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 2000),
     resets: local.resets && local.resets.length ? local.resets : remote.resets || [],
     seq: Math.max(local.seq || 1, remote.seq || 1),
@@ -131,6 +139,21 @@ function touchUsers(db) {
 
 function touchItems(db) {
   db.itemsRevision = Date.now();
+}
+
+function touchCatalog(db) {
+  db.catalogRevision = Date.now();
+}
+
+function emptyCatalog() {
+  return { brands: [], locations: [], tools: [] };
+}
+
+function chooseCatalog(local, remote) {
+  const left = Number(local.catalogRevision) || 0;
+  const right = Number(remote.catalogRevision) || 0;
+  if (right > left) return { catalog: remote.catalog || emptyCatalog(), revision: right };
+  return { catalog: local.catalog || remote.catalog || emptyCatalog(), revision: left };
 }
 
 function readLocalDb() {
@@ -187,13 +210,16 @@ function loadDb() {
   const remote = pullRemoteRecord();
   const localUsersRev = Number(db.usersRevision) || 0;
   const localItemsRev = Number(db.itemsRevision) || 0;
+  const localCatalogRev = Number(db.catalogRevision) || 0;
   const remoteUsersRev = remote ? Number(remote.usersRevision) || 0 : 0;
   const remoteItemsRev = remote ? Number(remote.itemsRevision) || 0 : 0;
+  const remoteCatalogRev = remote ? Number(remote.catalogRevision) || 0 : 0;
   if (remote) db = mergeRecord(db, remote);
   const changed = ensureSingleAdmin(db);
   if (changed) touchUsers(db);
+  const seeded = ensureCatalog(db);
   writeLocalDb(db);
-  if (remote === null || changed || localUsersRev > remoteUsersRev || localItemsRev > remoteItemsRev) pushRemoteRecord(db);
+  if (remote === null || changed || seeded || localUsersRev > remoteUsersRev || localItemsRev > remoteItemsRev || localCatalogRev > remoteCatalogRev) pushRemoteRecord(db);
   dbCache = db;
   dbCacheAt = Date.now();
   return db;
@@ -255,6 +281,7 @@ function cleanBlock(value, max) {
 }
 
 function publicUser(user) {
+  const access = user.role === "admin" ? "edit" : (user.access === "view" ? "view" : "edit");
   return {
     id: user.id,
     name: user.name,
@@ -262,8 +289,13 @@ function publicUser(user) {
     email: user.email || "",
     phone: user.phone || "",
     role: user.role,
+    access,
     createdAt: user.createdAt,
   };
+}
+
+function canEdit(user) {
+  return user.role === "admin" || user.access !== "view";
 }
 
 function validEmail(value) {
@@ -466,6 +498,7 @@ function validateItem(body, { existingTag } = {}) {
   const serialNumber = clean(body.serialNumber, 80);
   const notes = cleanBlock(body.notes, 2000);
   const unitPrice = parsePrice(body.unitPrice);
+  const brand = clean(body.brand, 80);
 
   if (tag && !/^[A-Z0-9][A-Z0-9\-_/]{0,31}$/.test(tag)) errors.push("Tag can use letters, numbers, and dashes only.");
   if (!name) errors.push("Enter the item name.");
@@ -504,6 +537,7 @@ function validateItem(body, { existingTag } = {}) {
       expectedReturn: expectedReturn || "",
       serialNumber,
       notes,
+      brand,
       unitPrice: unitPrice == null ? null : unitPrice,
       lineValue: lineValue(quantity, unitPrice == null ? null : unitPrice),
       previousTag: existingTag || "",
@@ -902,6 +936,73 @@ function requireUser(req, res, next) {
   next();
 }
 
+function requireEditor(req, res, next) {
+  requireUser(req, res, () => {
+    if (!canEdit(req.user)) {
+      res.status(403).json({ error: "This account can view the store, but cannot change it." });
+      return;
+    }
+    next();
+  });
+}
+
+function uniqueNames(values) {
+  const seen = new Map();
+  for (const value of values) {
+    const name = clean(value, 160);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (!seen.has(key)) seen.set(key, name);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
+function ensureCatalog(db) {
+  if (db.catalog && Array.isArray(db.catalog.brands) && db.catalogReady) return false;
+  const locations = uniqueNames([...(db.catalog?.locations || []), ...db.items.map((item) => item.storeLocation)]);
+  const tools = uniqueNames([...(db.catalog?.tools || []), ...db.items.filter((item) => item.section === "Tools").map((item) => item.name)]);
+  const brands = uniqueNames([...(db.catalog?.brands || []), ...db.items.map((item) => item.brand)]);
+  db.catalog = { brands, locations, tools };
+  db.catalogReady = true;
+  touchCatalog(db);
+  return true;
+}
+
+function listed(names, value) {
+  return names.some((name) => name.toLowerCase() === String(value || "").trim().toLowerCase());
+}
+
+function rememberCatalog(db, value) {
+  let changed = false;
+  if (value.brand && !listed(db.catalog.brands, value.brand)) {
+    db.catalog.brands = uniqueNames([...db.catalog.brands, value.brand]);
+    changed = true;
+  }
+  if (value.storeLocation && !listed(db.catalog.locations, value.storeLocation)) {
+    db.catalog.locations = uniqueNames([...db.catalog.locations, value.storeLocation]);
+    changed = true;
+  }
+  if (value.section === "Tools" && value.name && !listed(db.catalog.tools, value.name)) {
+    db.catalog.tools = uniqueNames([...db.catalog.tools, value.name]);
+    changed = true;
+  }
+  if (changed) touchCatalog(db);
+}
+
+function enforceLists(db, user, value) {
+  if (user.role === "admin") return "";
+  if (value.storeLocation && !listed(db.catalog.locations, value.storeLocation)) {
+    return "Choose a store location from the list created by the administrator.";
+  }
+  if (value.brand && !listed(db.catalog.brands, value.brand)) {
+    return "Choose a brand from the list created by the administrator.";
+  }
+  if (value.section === "Tools" && !listed(db.catalog.tools, value.name)) {
+    return "Choose a tool from the list created by the administrator.";
+  }
+  return "";
+}
+
 const routes = [];
 
 function register(method, routePath, handlers) {
@@ -988,6 +1089,7 @@ app.post("/api/auth/register", (req, res) => {
     phone: contact.phone,
     passwordHash: hashPassword(password),
     role: db.users.length === 0 ? "admin" : "staff",
+    access: "edit",
     createdAt: new Date().toISOString(),
   };
   db.users.push(user);
@@ -1242,6 +1344,7 @@ app.put("/api/users/:id", requireUser, (req, res) => {
   user.name = name;
   user.email = contact.email;
   user.phone = contact.phone;
+  if (user.role !== "admin") user.access = req.body?.access === "view" ? "view" : "edit";
   if (req.user.id === user.id) req.user.name = name;
   addAudit(req.db, {
     userId: req.user.id,
@@ -1294,50 +1397,108 @@ app.delete("/api/users/:id", requireUser, (req, res) => {
 
 app.get("/api/items", requireUser, (req, res) => {
   const items = [...req.db.items].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  res.json({ items, reviewDays: REVIEW_DAYS });
+  res.json({ items, catalog: req.db.catalog, reviewDays: REVIEW_DAYS });
 });
 
-app.post("/api/items", requireUser, (req, res) => {
+app.put("/api/catalog", requireUser, (req, res) => {
+  if (req.user.role !== "admin") {
+    res.status(403).json({ error: "Only the administrator can change the lists staff use." });
+    return;
+  }
+  req.db.catalog = {
+    brands: uniqueNames(req.body?.brands || []),
+    locations: uniqueNames(req.body?.locations || []),
+    tools: uniqueNames(req.body?.tools || []),
+  };
+  req.db.catalogReady = true;
+  touchCatalog(req.db);
+  addAudit(req.db, {
+    userId: req.user.id,
+    userName: req.user.name,
+    action: "account",
+    itemId: "",
+    tag: "",
+    itemName: "",
+    details: `${req.user.name} updated the brand, location, and tool lists.`,
+  });
+  saveDb(req.db);
+  res.json({ catalog: req.db.catalog });
+});
+
+app.post("/api/items", requireEditor, (req, res) => {
   const { errors, value } = validateItem(req.body || {});
   if (errors.length) {
     res.status(400).json({ error: errors[0], errors });
     return;
   }
-  let tag = value.tag;
-  if (!tag) tag = nextTag(req.db);
-  if (req.db.items.some((item) => item.tag.toUpperCase() === tag)) {
-    res.status(400).json({ error: "That tag is already used. Leave it blank to assign the next tag." });
+  const listError = enforceLists(req.db, req.user, value);
+  if (listError) {
+    res.status(400).json({ error: listError });
     return;
   }
+  const count = value.section === "Network equipment" ? Math.round(Number(value.quantity)) : 1;
+  const serials = Array.isArray(req.body?.serials) ? req.body.serials.map((entry) => clean(entry, 80)) : [];
+  if (value.section === "Network equipment" && count > 1) {
+    if (count !== Number(value.quantity) || count < 1 || count > 100) {
+      res.status(400).json({ error: "Network equipment quantity must be a whole number from 1 to 100." });
+      return;
+    }
+    if (serials.length !== count || serials.some((entry) => !entry)) {
+      res.status(400).json({ error: "Enter a serial number for each network unit." });
+      return;
+    }
+  }
   const now = new Date().toISOString();
-  const item = {
-    ...value,
-    tag,
-    id: crypto.randomUUID(),
-    createdAt: now,
-    createdBy: req.user.id,
-    createdByName: req.user.name,
-    updatedAt: now,
-    updatedBy: req.user.id,
-    updatedByName: req.user.name,
-  };
-  delete item.previousTag;
-  req.db.items.push(item);
-  addAudit(req.db, {
-    userId: req.user.id,
-    userName: req.user.name,
-    action: "created",
-    itemId: item.id,
-    tag: item.tag,
-    itemName: item.name,
-    details: `${req.user.name} added ${item.name} (${item.tag}) to ${item.section}. Quantity ${item.quantity} ${item.unit}, ${item.condition}, ${item.status}.`,
-  });
+  const created = [];
+  const reserved = new Set();
+  const total = value.section === "Network equipment" && count > 1 ? count : 1;
+  for (let index = 0; index < total; index += 1) {
+    let tag = index === 0 ? value.tag : "";
+    if (tag && (req.db.items.some((item) => item.tag.toUpperCase() === tag) || reserved.has(tag))) {
+      res.status(400).json({ error: "That tag is already used. Leave it blank to assign the next tag." });
+      return;
+    }
+    if (!tag) {
+      tag = nextTag(req.db);
+      while (reserved.has(tag) || req.db.items.some((item) => item.tag.toUpperCase() === tag)) tag = nextTag(req.db);
+    }
+    reserved.add(tag);
+    const unit = {
+      ...value,
+      tag,
+      quantity: total > 1 ? 1 : value.quantity,
+      serialNumber: total > 1 ? serials[index] : value.serialNumber,
+      lineValue: lineValue(total > 1 ? 1 : value.quantity, value.unitPrice),
+      id: crypto.randomUUID(),
+      createdAt: now,
+      createdBy: req.user.id,
+      createdByName: req.user.name,
+      updatedAt: now,
+      updatedBy: req.user.id,
+      updatedByName: req.user.name,
+    };
+    delete unit.previousTag;
+    created.push(unit);
+  }
+  if (req.user.role === "admin") created.forEach((item) => rememberCatalog(req.db, item));
+  req.db.items.push(...created);
+  for (const item of created) {
+    addAudit(req.db, {
+      userId: req.user.id,
+      userName: req.user.name,
+      action: "created",
+      itemId: item.id,
+      tag: item.tag,
+      itemName: item.name,
+      details: `${req.user.name} added ${item.name} (${item.tag}) to ${item.section}. Quantity ${item.quantity} ${item.unit}, ${item.condition}, ${item.status}.`,
+    });
+  }
   touchItems(req.db);
   saveDb(req.db);
-  res.status(201).json({ item });
+  res.status(201).json({ item: created[0], items: created });
 });
 
-app.put("/api/items/:id", requireUser, (req, res) => {
+app.put("/api/items/:id", requireEditor, (req, res) => {
   const item = req.db.items.find((entry) => entry.id === req.params.id);
   if (!item) {
     res.status(404).json({ error: "Item not found. It may have been removed." });
@@ -1352,6 +1513,11 @@ app.put("/api/items/:id", requireUser, (req, res) => {
     res.status(400).json({ error: errors[0], errors });
     return;
   }
+  const listError = enforceLists(req.db, req.user, value);
+  if (listError) {
+    res.status(400).json({ error: listError });
+    return;
+  }
   let tag = value.tag || item.tag;
   if (req.db.items.some((entry) => entry.id !== item.id && entry.tag.toUpperCase() === tag)) {
     res.status(400).json({ error: "That tag is already used by another item." });
@@ -1361,6 +1527,7 @@ app.put("/api/items/:id", requireUser, (req, res) => {
   const changes = describeChanges(before, { ...value, tag });
   Object.assign(item, value, { tag });
   delete item.previousTag;
+  if (req.user.role === "admin") rememberCatalog(req.db, item);
   item.updatedAt = new Date().toISOString();
   item.updatedBy = req.user.id;
   item.updatedByName = req.user.name;
@@ -1380,7 +1547,53 @@ app.put("/api/items/:id", requireUser, (req, res) => {
   res.json({ item });
 });
 
-app.post("/api/items/:id/review", requireUser, (req, res) => {
+app.post("/api/items/:id/movement", requireEditor, (req, res) => {
+  const item = req.db.items.find((entry) => entry.id === req.params.id);
+  if (!item) {
+    res.status(404).json({ error: "Item not found." });
+    return;
+  }
+  const direction = req.body?.direction === "out" ? "out" : req.body?.direction === "in" ? "in" : "";
+  if (!direction) {
+    res.status(400).json({ error: "Choose whether the item is going out of the store or coming back in." });
+    return;
+  }
+  if (direction === "out") {
+    const companyName = clean(req.body?.companyName || item.companyName, 160);
+    const clientLocation = clean(req.body?.clientLocation || item.clientLocation, 200);
+    const handedTo = clean(req.body?.handedTo || item.handedTo, 120);
+    if (!companyName || !clientLocation || !handedTo) {
+      res.status(400).json({ error: "Enter the company, the place it is going, and who is taking it before it leaves the store." });
+      return;
+    }
+    item.status = "Issued to site";
+    item.companyName = companyName;
+    item.clientLocation = clientLocation;
+    item.handedTo = handedTo;
+    item.issuedOn = item.issuedOn || new Date().toISOString().slice(0, 10);
+  } else {
+    item.status = "In store";
+  }
+  item.updatedAt = new Date().toISOString();
+  item.updatedBy = req.user.id;
+  item.updatedByName = req.user.name;
+  addAudit(req.db, {
+    userId: req.user.id,
+    userName: req.user.name,
+    action: "updated",
+    itemId: item.id,
+    tag: item.tag,
+    itemName: item.name,
+    details: direction === "out"
+      ? `${req.user.name} took ${item.name} (${item.tag}) out of the store for ${item.handedTo} at ${item.companyName}.`
+      : `${req.user.name} brought ${item.name} (${item.tag}) back into the store.`,
+  });
+  touchItems(req.db);
+  saveDb(req.db);
+  res.json({ item });
+});
+
+app.post("/api/items/:id/review", requireEditor, (req, res) => {
   const item = req.db.items.find((entry) => entry.id === req.params.id);
   if (!item) {
     res.status(404).json({ error: "Item not found." });
@@ -1403,7 +1616,7 @@ app.post("/api/items/:id/review", requireUser, (req, res) => {
   res.json({ item });
 });
 
-app.delete("/api/items/:id", requireUser, (req, res) => {
+app.delete("/api/items/:id", requireEditor, (req, res) => {
   const index = req.db.items.findIndex((entry) => entry.id === req.params.id);
   if (index < 0) {
     res.status(404).json({ error: "Item not found." });

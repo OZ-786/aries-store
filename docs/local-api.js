@@ -19,7 +19,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
   const REVIEW_MS = 30 * 24 * 60 * 60 * 1000;
 
   function emptyDb() {
-    return { users: [], items: [], audit: [], resets: [], seq: 1 };
+    return { users: [], items: [], audit: [], resets: [], seq: 1, catalog: { brands: [], locations: [], tools: [] } };
   }
 
   function decodeRecord(content) {
@@ -47,6 +47,10 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     parsed.audit ||= [];
     parsed.resets ||= [];
     parsed.seq ||= 1;
+    parsed.catalog ||= { brands: [], locations: [], tools: [] };
+    parsed.catalog.brands ||= [];
+    parsed.catalog.locations ||= [];
+    parsed.catalog.tools ||= [];
     return parsed;
   }
 
@@ -76,6 +80,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     const remote = await pullRecord();
     memory = remote || memory || emptyDb();
     ensureSingleAdmin(memory);
+    ensureCatalog(memory);
     loadedAt = Date.now();
     return memory;
   }
@@ -153,6 +158,8 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       audit: [...audit.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 2000),
       resets: local.resets || remote.resets || [],
       seq: Math.max(remote.seq || 1, local.seq || 1),
+      catalog: (Number(remote.catalogRevision) || 0) > (Number(local.catalogRevision) || 0) ? (remote.catalog || local.catalog) : (local.catalog || remote.catalog),
+      catalogRevision: Math.max(Number(remote.catalogRevision) || 0, Number(local.catalogRevision) || 0),
     };
     Object.assign(local, memory);
   }
@@ -189,8 +196,67 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     return next.split(":")[1] === hash;
   }
 
+  function touchCatalog(db) {
+    db.catalogRevision = Date.now();
+  }
+
   function publicUser(user) {
-    return { id: user.id, name: user.name, username: user.username, email: user.email || "", phone: user.phone || "", role: user.role, createdAt: user.createdAt };
+    const access = user.role === "admin" ? "edit" : (user.access === "view" ? "view" : "edit");
+    return { id: user.id, name: user.name, username: user.username, email: user.email || "", phone: user.phone || "", role: user.role, access, createdAt: user.createdAt };
+  }
+
+  function canEdit(user) {
+    return user.role === "admin" || user.access !== "view";
+  }
+
+  function uniqueNames(values) {
+    const seen = new Map();
+    for (const value of values) {
+      const name = clean(value, 160);
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (!seen.has(key)) seen.set(key, name);
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }
+
+  function ensureCatalog(db) {
+    db.catalog ||= { brands: [], locations: [], tools: [] };
+    if (db.catalogReady) return;
+    db.catalog.locations = uniqueNames([...(db.catalog.locations || []), ...db.items.map((item) => item.storeLocation)]);
+    db.catalog.tools = uniqueNames([...(db.catalog.tools || []), ...db.items.filter((item) => item.section === "Tools").map((item) => item.name)]);
+    db.catalog.brands = uniqueNames([...(db.catalog.brands || []), ...db.items.map((item) => item.brand)]);
+    db.catalogReady = true;
+    touchCatalog(db);
+  }
+
+  function listed(names, value) {
+    return (names || []).some((name) => name.toLowerCase() === String(value || "").trim().toLowerCase());
+  }
+
+  function rememberCatalog(db, value) {
+    let changed = false;
+    if (value.brand && !listed(db.catalog.brands, value.brand)) {
+      db.catalog.brands = uniqueNames([...db.catalog.brands, value.brand]);
+      changed = true;
+    }
+    if (value.storeLocation && !listed(db.catalog.locations, value.storeLocation)) {
+      db.catalog.locations = uniqueNames([...db.catalog.locations, value.storeLocation]);
+      changed = true;
+    }
+    if (value.section === "Tools" && value.name && !listed(db.catalog.tools, value.name)) {
+      db.catalog.tools = uniqueNames([...db.catalog.tools, value.name]);
+      changed = true;
+    }
+    if (changed) touchCatalog(db);
+  }
+
+  function enforceLists(db, user, value) {
+    if (user.role === "admin") return "";
+    if (value.storeLocation && !listed(db.catalog.locations, value.storeLocation)) return "Choose a store location from the list created by the administrator.";
+    if (value.brand && !listed(db.catalog.brands, value.brand)) return "Choose a brand from the list created by the administrator.";
+    if (value.section === "Tools" && !listed(db.catalog.tools, value.name)) return "Choose a tool from the list created by the administrator.";
+    return "";
   }
 
   function validEmail(value) {
@@ -266,6 +332,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       issuedOn: parseDate(body.issuedOn),
       expectedReturn: parseDate(body.expectedReturn),
       serialNumber: clean(body.serialNumber, 80),
+      brand: clean(body.brand, 80),
       notes: cleanBlock(body.notes, 2000),
       unitPrice: null,
       lineValue: null,
@@ -637,6 +704,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       target.name = name;
       target.email = contact.email;
       target.phone = contact.phone;
+      if (target.role !== "admin") target.access = body.access === "view" ? "view" : "edit";
       addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated the staff account ${target.name} (@${target.username}).` });
       touchUsers(db);
       await saveDb(db);
@@ -675,24 +743,104 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
     }
     if (method === "GET" && path === "/api/items") {
       const items = [...db.items].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-      return json(200, { items, reviewDays: 30 });
+      return json(200, { items, catalog: db.catalog, reviewDays: 30 });
+    }
+    if (method === "PUT" && path === "/api/catalog") {
+      if (user.role !== "admin") return json(403, { error: "Only the administrator can change the lists staff use." });
+      db.catalog = {
+        brands: uniqueNames(body.brands || []),
+        locations: uniqueNames(body.locations || []),
+        tools: uniqueNames(body.tools || []),
+      };
+      db.catalogReady = true;
+      touchCatalog(db);
+      addAudit(db, { userId: user.id, userName: user.name, action: "account", itemId: "", tag: "", itemName: "", details: `${user.name} updated the brand, location, and tool lists.` });
+      await saveDb(db);
+      return json(200, { catalog: db.catalog });
     }
     if (method === "POST" && path === "/api/items") {
+      if (!canEdit(user)) return json(403, { error: "This account can view the store, but cannot change it." });
       const { errors, value } = validateItem(body);
       if (errors.length) return json(400, { error: errors[0], errors });
-      let tag = value.tag || nextTag(db);
-      if (db.items.some((item) => item.tag.toUpperCase() === tag)) return json(400, { error: "That tag is already used. Leave it blank to assign the next tag." });
+      const listError = enforceLists(db, user, value);
+      if (listError) return json(400, { error: listError });
+      const count = value.section === "Network equipment" ? Math.round(Number(value.quantity)) : 1;
+      const serials = Array.isArray(body.serials) ? body.serials.map((entry) => clean(entry, 80)) : [];
+      if (value.section === "Network equipment" && count > 1) {
+        if (count !== Number(value.quantity) || count < 1 || count > 100) return json(400, { error: "Network equipment quantity must be a whole number from 1 to 100." });
+        if (serials.length !== count || serials.some((entry) => !entry)) return json(400, { error: "Enter a serial number for each network unit." });
+      }
       const now = new Date().toISOString();
-      const item = { ...value, tag, id: crypto.randomUUID(), createdAt: now, createdBy: user.id, createdByName: user.name, updatedAt: now, updatedBy: user.id, updatedByName: user.name };
-      db.items.push(item);
-      addAudit(db, { userId: user.id, userName: user.name, action: "created", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} added ${item.name} (${item.tag}) to ${item.section}. Quantity ${item.quantity} ${item.unit}, ${item.condition}, ${item.status}.` });
+      const created = [];
+      const reserved = new Set();
+      const total = value.section === "Network equipment" && count > 1 ? count : 1;
+      for (let index = 0; index < total; index += 1) {
+        let tag = index === 0 ? value.tag : "";
+        if (tag && (db.items.some((item) => item.tag.toUpperCase() === tag) || reserved.has(tag))) {
+          return json(400, { error: "That tag is already used. Leave it blank to assign the next tag." });
+        }
+        if (!tag) {
+          tag = nextTag(db);
+          while (reserved.has(tag) || db.items.some((item) => item.tag.toUpperCase() === tag)) tag = nextTag(db);
+        }
+        reserved.add(tag);
+        const item = {
+          ...value,
+          tag,
+          quantity: total > 1 ? 1 : value.quantity,
+          serialNumber: total > 1 ? serials[index] : value.serialNumber,
+          lineValue: value.unitPrice == null ? null : Math.round((total > 1 ? 1 : value.quantity) * value.unitPrice * 100) / 100,
+          id: crypto.randomUUID(),
+          createdAt: now,
+          createdBy: user.id,
+          createdByName: user.name,
+          updatedAt: now,
+          updatedBy: user.id,
+          updatedByName: user.name,
+        };
+        created.push(item);
+      }
+      if (user.role === "admin") created.forEach((item) => rememberCatalog(db, item));
+      db.items.push(...created);
+      for (const item of created) {
+        addAudit(db, { userId: user.id, userName: user.name, action: "created", itemId: item.id, tag: item.tag, itemName: item.name, details: `${user.name} added ${item.name} (${item.tag}) to ${item.section}. Quantity ${item.quantity} ${item.unit}, ${item.condition}, ${item.status}.` });
+      }
       touchItems(db);
       await saveDb(db);
-      return json(201, { item });
+      return json(201, { item: created[0], items: created });
+    }
+    const moveMatch = path.match(/^\/api\/items\/([^/]+)\/movement$/);
+    if (moveMatch && method === "POST") {
+      if (!canEdit(user)) return json(403, { error: "This account can view the store, but cannot change it." });
+      const item = db.items.find((entry) => entry.id === decodeURIComponent(moveMatch[1]));
+      if (!item) return json(404, { error: "Item not found." });
+      const direction = body.direction === "out" ? "out" : body.direction === "in" ? "in" : "";
+      if (!direction) return json(400, { error: "Choose whether the item is going out of the store or coming back in." });
+      if (direction === "out") {
+        const companyName = clean(body.companyName || item.companyName, 160);
+        const clientLocation = clean(body.clientLocation || item.clientLocation, 200);
+        const handedTo = clean(body.handedTo || item.handedTo, 120);
+        if (!companyName || !clientLocation || !handedTo) return json(400, { error: "Enter the company, the place it is going, and who is taking it before it leaves the store." });
+        item.status = "Issued to site";
+        item.companyName = companyName;
+        item.clientLocation = clientLocation;
+        item.handedTo = handedTo;
+        item.issuedOn = item.issuedOn || new Date().toISOString().slice(0, 10);
+      } else {
+        item.status = "In store";
+      }
+      item.updatedAt = new Date().toISOString();
+      item.updatedBy = user.id;
+      item.updatedByName = user.name;
+      addAudit(db, { userId: user.id, userName: user.name, action: "updated", itemId: item.id, tag: item.tag, itemName: item.name, details: direction === "out" ? `${user.name} took ${item.name} (${item.tag}) out of the store for ${item.handedTo} at ${item.companyName}.` : `${user.name} brought ${item.name} (${item.tag}) back into the store.` });
+      touchItems(db);
+      await saveDb(db);
+      return json(200, { item });
     }
     const itemMatch = path.match(/^\/api\/items\/([^/]+)$/);
     const reviewMatch = path.match(/^\/api\/items\/([^/]+)\/review$/);
     if (reviewMatch && method === "POST") {
+      if (!canEdit(user)) return json(403, { error: "This account can view the store, but cannot change it." });
       const item = db.items.find((entry) => entry.id === decodeURIComponent(reviewMatch[1]));
       if (!item) return json(404, { error: "Item not found." });
       item.updatedAt = new Date().toISOString();
@@ -704,15 +852,19 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       return json(200, { item });
     }
     if (itemMatch && method === "PUT") {
+      if (!canEdit(user)) return json(403, { error: "This account can view the store, but cannot change it." });
       const item = db.items.find((entry) => entry.id === decodeURIComponent(itemMatch[1]));
       if (!item) return json(404, { error: "Item not found. It may have been removed." });
       if (body.updatedAt && body.updatedAt !== item.updatedAt) return json(409, { error: `${item.updatedByName} updated this item while you were editing. Reload it and enter the change again.` });
       const { errors, value } = validateItem(body);
       if (errors.length) return json(400, { error: errors[0], errors });
+      const listError = enforceLists(db, user, value);
+      if (listError) return json(400, { error: listError });
       const tag = value.tag || item.tag;
       if (db.items.some((entry) => entry.id !== item.id && entry.tag.toUpperCase() === tag)) return json(400, { error: "That tag is already used by another item." });
       const changes = describeChanges(item, { ...value, tag });
       Object.assign(item, value, { tag });
+      if (user.role === "admin") rememberCatalog(db, item);
       item.updatedAt = new Date().toISOString();
       item.updatedBy = user.id;
       item.updatedByName = user.name;
@@ -722,6 +874,7 @@ if (!location.hostname.endsWith("github.io") || window.ARIES_API) {
       return json(200, { item });
     }
     if (itemMatch && method === "DELETE") {
+      if (!canEdit(user)) return json(403, { error: "This account can view the store, but cannot change it." });
       const index = db.items.findIndex((entry) => entry.id === decodeURIComponent(itemMatch[1]));
       if (index < 0) return json(404, { error: "Item not found." });
       const [item] = db.items.splice(index, 1);
