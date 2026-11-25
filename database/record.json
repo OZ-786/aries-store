@@ -2045,9 +2045,7 @@
   ],
   "itemsRevision": 1795600024030,
   "catalog": {
-    "brands": [
-      "Aries Test Brand"
-    ],
+    "brands": [],
     "locations": [
       "OFFICE OPEBI",
       "OJOTA",
@@ -2080,8 +2078,20 @@
       "WIRE FAULT INDICATOR[NEW]"
     ]
   },
-  "catalogRevision": 1795600009644,
+  "catalogRevision": 1795600026451,
   "audit": [
+    {
+      "id": "8430b444-d2d6-4add-97a3-83203a7dd825",
+      "at": "2026-11-25T09:47:06.451Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "1a4fb56f-1d9c-4685-b47a-ee2801669547",
       "at": "2026-11-25T09:47:04.030Z",
