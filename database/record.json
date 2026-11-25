@@ -2070,17 +2070,28 @@
       "FLWRGATE SAGAMU",
       "FRIESLAND",
       "FRIESLAND IKD",
-      "FRIESLAND OGBA",
       "GUINNESS OGBA",
       "MEDCOURT",
       "SAGAMU",
       "SUPPORT/MAINT"
     ]
   },
-  "catalogRevision": 1795619279763,
+  "catalogRevision": 1795619284694,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "223db82f-2427-4486-8cd1-e1015c5ec2f3",
+      "at": "2026-11-25T15:08:04.694Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "1cbf12ae-dd27-49ec-8e80-0b042e16d54a",
       "at": "2026-11-25T15:04:35.290Z",
