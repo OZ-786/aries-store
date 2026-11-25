@@ -29,20 +29,9 @@
       "passwordHash": "b5b32f0043e64b4aa8bd0981eaca91b3:914a02ddddf88e8872b0a264d3a01810b9b3412b1d023d0b41aef75f6568a3cc",
       "role": "staff",
       "createdAt": "2026-11-24T11:17:26.653Z"
-    },
-    {
-      "id": "d366782b-e151-4b42-8793-e018b205cb6f",
-      "name": "View Test",
-      "username": "viewtest",
-      "email": "",
-      "phone": "",
-      "passwordHash": "6d9d6e416e540108edb6c90ed52af836:6d4c499c31c02af485b7fae9be1140d161da25a82336764621cd6df901b9118a",
-      "role": "staff",
-      "access": "view",
-      "createdAt": "2026-11-25T09:46:54.324Z"
     }
   ],
-  "usersRevision": 1795600016423,
+  "usersRevision": 1795600028621,
   "items": [
     {
       "id": "1bab843d-cbe2-407f-9deb-1b513dcc29fd",
@@ -2080,6 +2069,18 @@
   },
   "catalogRevision": 1795600026451,
   "audit": [
+    {
+      "id": "2fc813a2-90e0-4ec1-8ed4-77bfedf0480d",
+      "at": "2026-11-25T09:47:08.621Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed removed the account View Test (@viewtest)."
+    },
     {
       "id": "8430b444-d2d6-4add-97a3-83203a7dd825",
       "at": "2026-11-25T09:47:06.451Z",
