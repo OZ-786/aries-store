@@ -2019,7 +2019,6 @@
       "Cisco Meraki",
       "COMMSCOPE",
       "D LINK",
-      "DADA NET",
       "DINTEK",
       "FORTIGATE",
       "HPE",
@@ -2078,10 +2077,22 @@
       "SUPPORT/MAINT"
     ]
   },
-  "catalogRevision": 1795619071084,
+  "catalogRevision": 1795619075289,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "1cbf12ae-dd27-49ec-8e80-0b042e16d54a",
+      "at": "2026-11-25T15:04:35.290Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "dd86b335-688f-47d1-afda-ca8affd21487",
       "at": "2026-11-25T14:22:35.051Z",
