@@ -1783,7 +1783,7 @@
       "status": "Issued to site",
       "storeLocation": "",
       "companyName": "MEDCOURT",
-      "clientLocation": "MEDCOURT",
+      "clientLocation": "OREGUN",
       "handedTo": "BODE",
       "handedToPhone": "",
       "issuedOn": "",
@@ -1795,9 +1795,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:58:13.167Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "6243f6ac-e6a8-4c15-95e1-6ea7ddd1d10d",
@@ -2022,7 +2023,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690649439,
+  "itemsRevision": 1795690693167,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2103,6 +2104,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "aff78968-a5aa-4fc2-bcc3-6a1d60299325",
+      "at": "2026-11-26T10:58:13.167Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "b222c473-729d-4e2c-a7e1-30211f5e7e11",
+      "tag": "AST-0066",
+      "itemName": "LADDER",
+      "details": "Abdul-Waliyi Muhammed updated LADDER (AST-0066). Client location: MEDCOURT → OREGUN"
+    },
     {
       "id": "3d5fbaef-332a-4912-8f35-146a77228e24",
       "at": "2026-11-26T10:57:29.439Z",
