@@ -1587,11 +1587,11 @@
       "tag": "AST-0059",
       "name": "COMPLETE BAGS OF CLEVER& L",
       "section": "Tools",
-      "quantity": 0,
+      "quantity": 1,
       "unit": "bag",
       "condition": "Fair",
       "status": "In store",
-      "storeLocation": "STORE [OPEBI]",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -1605,9 +1605,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T11:02:26.120Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "d47a9385-0301-41d3-baa7-dbda3f74a04f",
@@ -2030,7 +2031,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690911116,
+  "itemsRevision": 1795690946120,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2111,6 +2112,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "8f4e69a9-d481-43b0-89ba-64b0bfb18058",
+      "at": "2026-11-26T11:02:26.120Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "7326dca2-4304-4ee7-97c1-fbf37862e134",
+      "tag": "AST-0059",
+      "itemName": "COMPLETE BAGS OF CLEVER& L",
+      "details": "Abdul-Waliyi Muhammed updated COMPLETE BAGS OF CLEVER& L (AST-0059). Quantity: 0 → 1; Store location: STORE [OPEBI] → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "69e67203-2171-4376-9e03-1a0223ea61d8",
       "at": "2026-11-26T11:01:51.116Z",
