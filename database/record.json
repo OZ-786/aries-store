@@ -2066,28 +2066,33 @@
     ],
     "sites": [
       "AGBARA",
+      "BENIN CITY, IKPOBA HILL",
       "DOPEMU",
-      "FLOWER GATE",
-      "FLWRGATE SAGAMU",
-      "FRIESLAND",
-      "FRIESLAND IKD",
-      "FRIESLAND OGBA",
-      "GUINNESS OGBA",
       "IKEJA",
       "IKEJA GRA",
       "IKORODU",
-      "MEDCOURT",
       "OGBA",
       "OREGUN",
       "SAGAMU",
-      "SUPPORT/MAINT",
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795688895999,
+  "catalogRevision": 1795688898149,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "0002f969-43bc-46dd-9cdd-2f75d397336a",
+      "at": "2026-11-26T10:28:18.149Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "88c3ee45-83bb-460c-be71-207788d82a67",
       "at": "2026-11-26T10:26:44.199Z",
