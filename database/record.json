@@ -2066,7 +2066,6 @@
     ],
     "sites": [
       "AGBARA",
-      "FRIESLAND",
       "FRIESLAND IKD",
       "FRIESLAND OGBA",
       "GUINNESS OGBA",
@@ -2075,10 +2074,22 @@
       "SAGAMU"
     ]
   },
-  "catalogRevision": 1795688564212,
+  "catalogRevision": 1795688567739,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "04aa43f6-488e-48ae-acb8-e2e653944ddb",
+      "at": "2026-11-26T10:22:47.739Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "34f0fa1c-b885-4ae3-8ac5-31c38922e651",
       "at": "2026-11-26T10:22:44.212Z",
