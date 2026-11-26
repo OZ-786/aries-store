@@ -1395,13 +1395,13 @@
       "tag": "AST-0052",
       "name": "LABELLING MACHINE",
       "section": "Tools",
-      "quantity": 0,
+      "quantity": 1,
       "unit": "pcs",
       "condition": "Damaged",
-      "status": "Issued to site",
+      "status": "In store",
       "storeLocation": "",
-      "companyName": "SUPPORT/MAINT",
-      "clientLocation": "SUPPORT/MAINT",
+      "companyName": "",
+      "clientLocation": "",
       "handedTo": "FOLUKE",
       "handedToPhone": "",
       "issuedOn": "",
@@ -1413,9 +1413,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:39:55.311Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "7ed1ae1f-e6ac-4792-9c26-08cb9789a333",
@@ -2016,7 +2017,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795689532981,
+  "itemsRevision": 1795689595311,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2095,6 +2096,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "349c2d54-5f7b-4dbb-a619-55b62f6a8b10",
+      "at": "2026-11-26T10:39:55.311Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "ee12ed81-d8bd-4695-97e5-77674686fcbc",
+      "tag": "AST-0052",
+      "itemName": "LABELLING MACHINE",
+      "details": "Abdul-Waliyi Muhammed updated LABELLING MACHINE (AST-0052). Quantity: 0 → 1; Status: Issued to site → In store; Company: SUPPORT/MAINT → —; Client location: SUPPORT/MAINT → —"
+    },
     {
       "id": "73189ccc-8aaf-4f2d-a8fc-405a8e787991",
       "at": "2026-11-26T10:38:52.981Z",
