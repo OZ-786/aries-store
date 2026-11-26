@@ -1342,8 +1342,8 @@
       "quantity": 0,
       "unit": "pcs",
       "condition": "Damaged",
-      "status": "Issued to site",
-      "storeLocation": "",
+      "status": "In store",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "SUPPORT/MAINT",
       "clientLocation": "SUPPORT/MAINT",
       "handedTo": "FOLUKE",
@@ -1357,9 +1357,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:37:37.449Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "0aca0f92-82a2-4552-ba44-b3958447c918",
@@ -2014,7 +2015,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795689393425,
+  "itemsRevision": 1795689457449,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2093,6 +2094,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "fca03b44-897f-4717-aea7-bc2ad0b90057",
+      "at": "2026-11-26T10:37:37.449Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "e55ab9b0-4d38-4b1b-b372-38e5790dd17f",
+      "tag": "AST-0050",
+      "itemName": "PUNCH DOWN",
+      "details": "Abdul-Waliyi Muhammed updated PUNCH DOWN (AST-0050). Status: Issued to site → In store; Store location: — → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "34f3f907-ca1e-4787-8345-d9e5079945ac",
       "at": "2026-11-26T10:36:33.425Z",
