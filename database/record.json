@@ -2031,11 +2031,8 @@
     "locations": [
       "MD OFFICE",
       "OFFICE MAIN STORE [OPEBI]",
-      "OFFICE OPEBI",
       "OFFICE SUB STORE [OPEBI]",
       "OJOTA",
-      "OPEBI",
-      "STORE [OPEBI]",
       "STORE OPEBI"
     ],
     "tools": [
@@ -2068,28 +2065,32 @@
       "AGBARA",
       "BENIN CITY, IKPOBA HILL",
       "DOPEMU",
-      "FLOWER GATE",
-      "FLWRGATE SAGAMU",
-      "FRIESLAND",
-      "FRIESLAND IKD",
-      "FRIESLAND OGBA",
-      "GUINNESS OGBA",
       "IKEJA",
       "IKEJA GRA",
       "IKORODU",
       "ILUPEJU",
-      "MEDCOURT",
       "OGBA",
       "OREGUN",
       "SAGAMU",
-      "SUPPORT/MAINT",
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795688964430,
+  "catalogRevision": 1795688966717,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "ca54b37f-ed32-4209-af21-0093c9a60798",
+      "at": "2026-11-26T10:29:26.717Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "1ecc06af-b609-4fe3-b6ff-91cac7fd4276",
       "at": "2026-11-26T10:29:13.704Z",
