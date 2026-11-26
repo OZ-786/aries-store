@@ -1638,15 +1638,15 @@
     {
       "id": "c8e793b0-2450-47a2-813f-1ff3ee84ddf3",
       "tag": "AST-0061",
-      "name": "SPLICING MACHINE [RED]&CLVE",
+      "name": "Fiber Splicing Machine",
       "section": "Tools",
       "quantity": 1,
       "unit": "pcs",
       "condition": "Good",
       "status": "Issued to site",
       "storeLocation": "",
-      "companyName": "FLOWER GATE",
-      "clientLocation": "FLOWER GATE",
+      "companyName": "NESTLE",
+      "clientLocation": "SAGAMU",
       "handedTo": "EMMA",
       "handedToPhone": "",
       "issuedOn": "",
@@ -1658,9 +1658,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:52:53.837Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "109d4aa6-f972-4971-9384-3d6c71d17add",
@@ -2020,7 +2021,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690186929,
+  "itemsRevision": 1795690373837,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2101,6 +2102,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "11b083c2-1b49-43f4-b676-ce81fd8dd3ba",
+      "at": "2026-11-26T10:52:53.837Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "c8e793b0-2450-47a2-813f-1ff3ee84ddf3",
+      "tag": "AST-0061",
+      "itemName": "Fiber Splicing Machine",
+      "details": "Abdul-Waliyi Muhammed updated Fiber Splicing Machine (AST-0061). Name: SPLICING MACHINE [RED]&CLVE → Fiber Splicing Machine; Company: FLOWER GATE → NESTLE; Client location: FLOWER GATE → SAGAMU"
+    },
     {
       "id": "38f34af6-1c96-43e4-85af-671e14c37e23",
       "at": "2026-11-26T10:49:46.929Z",
