@@ -2033,7 +2033,6 @@
       "OFFICE MAIN STORE [OPEBI]",
       "OFFICE SUB STORE [OPEBI]",
       "OJOTA",
-      "OPEBI",
       "STORE [OPEBI]",
       "STORE OPEBI"
     ],
@@ -2077,10 +2076,22 @@
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795688950429,
+  "catalogRevision": 1795688953704,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "1ecc06af-b609-4fe3-b6ff-91cac7fd4276",
+      "at": "2026-11-26T10:29:13.704Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "b3df86ab-bc67-4a0c-8d37-1e6688d60288",
       "at": "2026-11-26T10:29:10.429Z",
