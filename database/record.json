@@ -2067,6 +2067,12 @@
     "sites": [
       "AGBARA",
       "DOPEMU",
+      "FLOWER GATE",
+      "FLWRGATE SAGAMU",
+      "FRIESLAND",
+      "FRIESLAND IKD",
+      "FRIESLAND OGBA",
+      "GUINNESS OGBA",
       "IKEJA",
       "IKEJA GRA",
       "IKORODU",
@@ -2074,10 +2080,11 @@
       "OGBA",
       "OREGUN",
       "SAGAMU",
+      "SUPPORT/MAINT",
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795688787498,
+  "catalogRevision": 1795688801963,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
