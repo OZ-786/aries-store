@@ -1754,7 +1754,7 @@
       "unit": "pcs",
       "condition": "Good",
       "status": "In store",
-      "storeLocation": "STORE OPEBI",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -1768,9 +1768,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T11:00:06.015Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "b222c473-729d-4e2c-a7e1-30211f5e7e11",
@@ -2025,7 +2026,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690779987,
+  "itemsRevision": 1795690806015,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2106,6 +2107,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "1b83bd33-fea7-4cca-8621-d3b70b5a524a",
+      "at": "2026-11-26T11:00:06.015Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "7a5cf5ec-027e-4d36-b939-eb4eb3fcb3fd",
+      "tag": "AST-0065",
+      "itemName": "NEW PLIER/ CUTTER",
+      "details": "Abdul-Waliyi Muhammed updated NEW PLIER/ CUTTER (AST-0065). Store location: STORE OPEBI → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "9124363d-b560-49e2-90e1-d9347e5f738b",
       "at": "2026-11-26T10:59:39.987Z",
