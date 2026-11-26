@@ -98,7 +98,7 @@
       "unit": "pcs",
       "condition": "Good",
       "status": "In store",
-      "storeLocation": "OPEBI",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -112,9 +112,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:31:14.181Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "b1c37129-8b4d-4d8a-8c3a-46881ec06d8b",
@@ -2011,7 +2012,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795689040981,
+  "itemsRevision": 1795689074181,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2090,6 +2091,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "eacbd922-85ca-428c-b27e-df40fea9ae92",
+      "at": "2026-11-26T10:31:14.181Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "2b51f0a6-b0d5-4fdb-8f12-3ba902628b5e",
+      "tag": "AST-0003",
+      "itemName": "1M SC/UPC OM4 50/125 0.9mm T/B PIGTAILS",
+      "details": "Abdul-Waliyi Muhammed updated 1M SC/UPC OM4 50/125 0.9mm T/B PIGTAILS (AST-0003). Store location: OPEBI → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "2690c939-0087-497d-ad64-72235d2934ca",
       "at": "2026-11-26T10:30:40.981Z",
