@@ -1572,16 +1572,17 @@
       "handedToPhone": "",
       "issuedOn": "",
       "expectedReturn": "",
-      "serialNumber": "",
+      "serialNumber": "BOSCH",
       "notes": "Imported from the November 2026 tools sheet. Sheet remark: BAD Sheet condition: BAD",
       "unitPrice": null,
       "lineValue": null,
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T11:04:31.869Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "7326dca2-4304-4ee7-97c1-fbf37862e134",
@@ -2032,7 +2033,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690973724,
+  "itemsRevision": 1795691071869,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2113,6 +2114,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "4d30b817-607b-47aa-9ca6-d7420505673b",
+      "at": "2026-11-26T11:04:31.869Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "55ec473b-1c06-4412-8327-30e7e375182e",
+      "tag": "AST-0058",
+      "itemName": "BOSCH PST 650",
+      "details": "Abdul-Waliyi Muhammed updated BOSCH PST 650 (AST-0058). Serial number: — → BOSCH"
+    },
     {
       "id": "725953ca-8bf9-40d5-8ec4-205630643c03",
       "at": "2026-11-26T11:02:53.724Z",
