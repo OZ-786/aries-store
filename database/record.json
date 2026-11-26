@@ -2031,8 +2031,10 @@
     "locations": [
       "MD OFFICE",
       "OFFICE MAIN STORE [OPEBI]",
+      "OFFICE OPEBI",
       "OFFICE SUB STORE [OPEBI]",
       "OJOTA",
+      "OPEBI",
       "STORE [OPEBI]",
       "STORE OPEBI"
     ],
@@ -2066,17 +2068,25 @@
       "AGBARA",
       "BENIN CITY, IKPOBA HILL",
       "DOPEMU",
+      "FLOWER GATE",
+      "FLWRGATE SAGAMU",
+      "FRIESLAND",
+      "FRIESLAND IKD",
+      "FRIESLAND OGBA",
+      "GUINNESS OGBA",
       "IKEJA",
       "IKEJA GRA",
       "IKORODU",
       "ILUPEJU",
+      "MEDCOURT",
       "OGBA",
       "OREGUN",
       "SAGAMU",
+      "SUPPORT/MAINT",
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795688953704,
+  "catalogRevision": 1795688964430,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
