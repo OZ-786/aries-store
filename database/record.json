@@ -2066,25 +2066,33 @@
     ],
     "sites": [
       "AGBARA",
-      "FLOWER GATE",
-      "FLWRGATE SAGAMU",
-      "FRIESLAND",
+      "DOPEMU",
       "FRIESLAND IKD",
       "FRIESLAND OGBA",
-      "GUINNESS OGBA",
       "IKORODU",
       "MEDCOURT",
       "OGBA",
       "OREGUN",
       "SAGAMU",
-      "SUPPORT/MAINT",
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795688672683,
+  "catalogRevision": 1795688674989,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "b9c455b2-bfc3-49cc-a2d6-f6fc2d546eab",
+      "at": "2026-11-26T10:24:34.989Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "a182bdd6-61b5-4b7f-a5bc-a78b5197795b",
       "at": "2026-11-26T10:23:57.520Z",
