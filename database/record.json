@@ -126,7 +126,7 @@
       "unit": "pcs",
       "condition": "Good",
       "status": "In store",
-      "storeLocation": "OPEBI",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -140,9 +140,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:36:07.824Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "485bed30-1306-4f32-8abb-96d6176acbf4",
@@ -2012,7 +2013,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795689084969,
+  "itemsRevision": 1795689367824,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2091,6 +2092,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "d15ebec4-a2e2-478c-9d0e-ffd8dd4d684c",
+      "at": "2026-11-26T10:36:07.824Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "b1c37129-8b4d-4d8a-8c3a-46881ec06d8b",
+      "tag": "AST-0004",
+      "itemName": "10M SC/UPC-LC/UPC OM4 50/1253mmD p/cord",
+      "details": "Abdul-Waliyi Muhammed updated 10M SC/UPC-LC/UPC OM4 50/1253mmD p/cord (AST-0004). Store location: OPEBI → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "19cadc3e-5c89-4106-9728-a04afc956c5e",
       "at": "2026-11-26T10:31:24.969Z",
