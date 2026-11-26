@@ -1865,7 +1865,7 @@
       "unit": "pcs",
       "condition": "Good",
       "status": "In store",
-      "storeLocation": "OFFICE OPEBI",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -1879,9 +1879,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:59:39.987Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "6227e048-74fc-479e-afa2-5505782f0621",
@@ -2024,7 +2025,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690727628,
+  "itemsRevision": 1795690779987,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2105,6 +2106,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "9124363d-b560-49e2-90e1-d9347e5f738b",
+      "at": "2026-11-26T10:59:39.987Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "a45801bb-362a-46dd-ad2b-733629f9b032",
+      "tag": "AST-0069",
+      "itemName": "EASY LABEL MACHIN$4 CARTRI",
+      "details": "Abdul-Waliyi Muhammed updated EASY LABEL MACHIN$4 CARTRI (AST-0069). Store location: OFFICE OPEBI → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "22666bc4-57f0-4a7c-b518-b483a9128c2a",
       "at": "2026-11-26T10:58:47.628Z",
