@@ -1504,13 +1504,13 @@
       "tag": "AST-0056",
       "name": "LINXCOM FIBRE LIGHT",
       "section": "Tools",
-      "quantity": 0,
+      "quantity": 1,
       "unit": "pcs",
       "condition": "Damaged",
       "status": "Issued to site",
       "storeLocation": "",
-      "companyName": "FRIESLAND OGBA",
-      "clientLocation": "FRIESLAND OGBA",
+      "companyName": "FRIESLAND",
+      "clientLocation": "OGBA",
       "handedTo": "MR TAOFIK",
       "handedToPhone": "",
       "issuedOn": "",
@@ -1522,9 +1522,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:48:58.221Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "c5f89286-abc6-42b8-85ff-42983f3727c8",
@@ -2018,7 +2019,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795689779678,
+  "itemsRevision": 1795690138221,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2099,6 +2100,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "c6cba8ad-520e-4b75-8324-6b9554f68d68",
+      "at": "2026-11-26T10:48:58.221Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "ff99df92-c80e-4da0-836d-0aa1e7b880d1",
+      "tag": "AST-0056",
+      "itemName": "LINXCOM FIBRE LIGHT",
+      "details": "Abdul-Waliyi Muhammed updated LINXCOM FIBRE LIGHT (AST-0056). Quantity: 0 → 1; Company: FRIESLAND OGBA → FRIESLAND; Client location: FRIESLAND OGBA → OGBA"
+    },
     {
       "id": "1e066dce-f789-4a0f-bf1d-9811424014bf",
       "at": "2026-11-26T10:42:59.678Z",
