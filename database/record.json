@@ -2076,7 +2076,6 @@
       "AGBARA",
       "BENIN CITY, IKPOBA HILL",
       "DOPEMU",
-      "FLOWER GATE",
       "FLWRGATE SAGAMU",
       "FRIESLAND",
       "FRIESLAND IKD",
@@ -2094,10 +2093,22 @@
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795689676227,
+  "catalogRevision": 1795689678706,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "4df4fdbb-1220-4b07-9294-d17fc50ded1e",
+      "at": "2026-11-26T10:41:18.706Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "0c7a36d6-e41d-4fb7-a0c9-a1433069dbea",
       "at": "2026-11-26T10:40:48.503Z",
