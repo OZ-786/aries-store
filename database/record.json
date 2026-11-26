@@ -1892,7 +1892,7 @@
       "unit": "pcs",
       "condition": "Good",
       "status": "In store",
-      "storeLocation": "OFFICE OPEBI",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -1906,9 +1906,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:58:47.628Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "17bb00e9-f754-40d9-ae2a-3f5511a6076f",
@@ -2023,7 +2024,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690693167,
+  "itemsRevision": 1795690727628,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2104,6 +2105,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "22666bc4-57f0-4a7c-b518-b483a9128c2a",
+      "at": "2026-11-26T10:58:47.628Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "6227e048-74fc-479e-afa2-5505782f0621",
+      "tag": "AST-0070",
+      "itemName": "NF-488 POE CHECKER",
+      "details": "Abdul-Waliyi Muhammed updated NF-488 POE CHECKER (AST-0070). Store location: OFFICE OPEBI → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "aff78968-a5aa-4fc2-bcc3-6a1d60299325",
       "at": "2026-11-26T10:58:13.167Z",
