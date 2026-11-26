@@ -2066,15 +2066,19 @@
     ],
     "sites": [
       "AGBARA",
+      "FLOWER GATE",
+      "FLWRGATE SAGAMU",
+      "FRIESLAND",
       "FRIESLAND IKD",
       "FRIESLAND OGBA",
       "GUINNESS OGBA",
       "MEDCOURT",
       "OREGUN",
-      "SAGAMU"
+      "SAGAMU",
+      "SUPPORT/MAINT"
     ]
   },
-  "catalogRevision": 1795688567739,
+  "catalogRevision": 1795688578199,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
