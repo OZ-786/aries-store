@@ -18,7 +18,8 @@
       "phone": "08029070000",
       "passwordHash": "6b634a669d54430492c349d3e07d15ba:96d164300109e55cb026bfc500902cd0e7ed767c3cbeade0027a39d968dea50a",
       "role": "staff",
-      "createdAt": "2026-11-24T09:38:15.957Z"
+      "createdAt": "2026-11-24T09:38:15.957Z",
+      "access": "view"
     },
     {
       "id": "6b36d448-f2fd-4684-ada0-800209c34912",
@@ -31,7 +32,7 @@
       "createdAt": "2026-11-24T11:17:26.653Z"
     }
   ],
-  "usersRevision": 1795600028621,
+  "usersRevision": 1795691575103,
   "items": [
     {
       "id": "1bab843d-cbe2-407f-9deb-1b513dcc29fd",
@@ -2115,6 +2116,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "a17f350a-b625-416d-bc65-7d8d4fe3d75c",
+      "at": "2026-11-26T11:12:55.103Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the staff account adekunle bangbala (@adekunle)."
+    },
     {
       "id": "6aced653-f92d-4230-aa03-0e7cb6b13f18",
       "at": "2026-11-26T11:05:33.036Z",
