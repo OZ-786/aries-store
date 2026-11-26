@@ -1674,7 +1674,7 @@
       "unit": "pcs",
       "condition": "Good",
       "status": "In store",
-      "storeLocation": "STORE OPEBI",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -1688,9 +1688,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T11:01:51.116Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "63af9a3e-f2c3-4f2a-9936-eca8539cc23a",
@@ -2029,7 +2030,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690878709,
+  "itemsRevision": 1795690911116,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2110,6 +2111,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "69e67203-2171-4376-9e03-1a0223ea61d8",
+      "at": "2026-11-26T11:01:51.116Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "109d4aa6-f972-4971-9384-3d6c71d17add",
+      "tag": "AST-0062",
+      "itemName": "NEW HELMET",
+      "details": "Abdul-Waliyi Muhammed updated NEW HELMET (AST-0062). Store location: STORE OPEBI → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "618109d0-8863-4f36-b32c-e3c2b10037b4",
       "at": "2026-11-26T11:01:18.709Z",
