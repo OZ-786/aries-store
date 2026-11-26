@@ -2026,6 +2026,7 @@
       "COMMSCOPE",
       "D LINK",
       "DINTEK",
+      "DYMO",
       "FORTIGATE",
       "HPE",
       "MIKROTIK",
@@ -2092,10 +2093,22 @@
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795689627525,
+  "catalogRevision": 1795689629684,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "94ddab79-28f9-4b2f-9c1f-dddaca9cb557",
+      "at": "2026-11-26T10:40:29.684Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "349c2d54-5f7b-4dbb-a619-55b62f6a8b10",
       "at": "2026-11-26T10:39:55.311Z",
