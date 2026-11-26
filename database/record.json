@@ -1833,8 +1833,8 @@
       "condition": "Good",
       "status": "Issued to site",
       "storeLocation": "",
-      "companyName": "GUINNESS OGBA",
-      "clientLocation": "GUINNESS OGBA",
+      "companyName": "GUINNESS",
+      "clientLocation": "OGBA",
       "handedTo": "ELIJAH",
       "handedToPhone": "",
       "issuedOn": "",
@@ -1846,9 +1846,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:42:59.678Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "a45801bb-362a-46dd-ad2b-733629f9b032",
@@ -2017,7 +2018,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795689595311,
+  "itemsRevision": 1795689779678,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2098,6 +2099,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "1e066dce-f789-4a0f-bf1d-9811424014bf",
+      "at": "2026-11-26T10:42:59.678Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "701c7041-1faf-4aec-b0ec-47632150747e",
+      "tag": "AST-0068",
+      "itemName": "LADDER",
+      "details": "Abdul-Waliyi Muhammed updated LADDER (AST-0068). Company: GUINNESS OGBA → GUINNESS; Client location: GUINNESS OGBA → OGBA"
+    },
     {
       "id": "4df4fdbb-1220-4b07-9294-d17fc50ded1e",
       "at": "2026-11-26T10:41:18.706Z",
