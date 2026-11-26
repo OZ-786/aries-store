@@ -2031,8 +2031,12 @@
     "locations": [
       "MD OFFICE",
       "OFFICE MAIN STORE [OPEBI]",
+      "OFFICE OPEBI",
       "OFFICE SUB STORE [OPEBI]",
-      "OJOTA"
+      "OJOTA",
+      "OPEBI",
+      "STORE [OPEBI]",
+      "STORE OPEBI"
     ],
     "tools": [
       "BIG DRILLING MACHINE",
@@ -2064,17 +2068,25 @@
       "AGBARA",
       "BENIN CITY, IKPOBA HILL",
       "DOPEMU",
+      "FLOWER GATE",
+      "FLWRGATE SAGAMU",
+      "FRIESLAND",
+      "FRIESLAND IKD",
+      "FRIESLAND OGBA",
+      "GUINNESS OGBA",
       "IKEJA",
       "IKEJA GRA",
       "IKORODU",
       "ILUPEJU",
+      "MEDCOURT",
       "OGBA",
       "OREGUN",
       "SAGAMU",
+      "SUPPORT/MAINT",
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795688970574,
+  "catalogRevision": 1795689002889,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
