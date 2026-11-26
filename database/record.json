@@ -2021,6 +2021,7 @@
   "catalog": {
     "brands": [
       "ARUBA",
+      "BROTHER",
       "CISCO",
       "Cisco Meraki",
       "COMMSCOPE",
@@ -2093,10 +2094,22 @@
       "SURULERE"
     ]
   },
-  "catalogRevision": 1795689646266,
+  "catalogRevision": 1795689648503,
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "0c7a36d6-e41d-4fb7-a0c9-a1433069dbea",
+      "at": "2026-11-26T10:40:48.503Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "account",
+      "itemId": "",
+      "tag": "",
+      "itemName": "",
+      "details": "Abdul-Waliyi Muhammed updated the brand, location, and tool lists."
+    },
     {
       "id": "94ddab79-28f9-4b2f-9c1f-dddaca9cb557",
       "at": "2026-11-26T10:40:29.684Z",
