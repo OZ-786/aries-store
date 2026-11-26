@@ -1807,8 +1807,8 @@
       "condition": "Good",
       "status": "Issued to site",
       "storeLocation": "",
-      "companyName": "FRIESLAND IKD",
-      "clientLocation": "FRIESLAND IKD",
+      "companyName": "FRIESLAND",
+      "clientLocation": "IKORODU",
       "handedTo": "ELDER",
       "handedToPhone": "",
       "issuedOn": "",
@@ -1820,9 +1820,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:49:46.929Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "701c7041-1faf-4aec-b0ec-47632150747e",
@@ -2019,7 +2020,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690138221,
+  "itemsRevision": 1795690186929,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2100,6 +2101,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "38f34af6-1c96-43e4-85af-671e14c37e23",
+      "at": "2026-11-26T10:49:46.929Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "6243f6ac-e6a8-4c15-95e1-6ea7ddd1d10d",
+      "tag": "AST-0067",
+      "itemName": "LADDER",
+      "details": "Abdul-Waliyi Muhammed updated LADDER (AST-0067). Company: FRIESLAND IKD → FRIESLAND; Client location: FRIESLAND IKD → IKORODU"
+    },
     {
       "id": "c6cba8ad-520e-4b75-8324-6b9554f68d68",
       "at": "2026-11-26T10:48:58.221Z",
