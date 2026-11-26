@@ -1290,8 +1290,8 @@
       "condition": "Good",
       "status": "Issued to site",
       "storeLocation": "",
-      "companyName": "FLWRGATE SAGAMU",
-      "clientLocation": "FLWRGATE SAGAMU",
+      "companyName": "NESTLE",
+      "clientLocation": "SAGAMU",
       "handedTo": "EMMANUEL",
       "handedToPhone": "",
       "issuedOn": "",
@@ -1303,9 +1303,10 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-23T20:03:19.828Z",
+      "updatedAt": "2026-11-26T10:57:29.439Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
-      "updatedByName": "Abdul-Waliyi Muhammed"
+      "updatedByName": "Abdul-Waliyi Muhammed",
+      "brand": ""
     },
     {
       "id": "fbef01a2-e31d-4b4c-9ed1-6ba40a1cdacb",
@@ -2021,7 +2022,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795690373837,
+  "itemsRevision": 1795690649439,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2102,6 +2103,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "3d5fbaef-332a-4912-8f35-146a77228e24",
+      "at": "2026-11-26T10:57:29.439Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "c13f10f5-71e5-4164-a3a4-63519b27525b",
+      "tag": "AST-0047",
+      "itemName": "SMALL TOOL BOX [MD]",
+      "details": "Abdul-Waliyi Muhammed updated SMALL TOOL BOX [MD] (AST-0047). Company: FLWRGATE SAGAMU → NESTLE; Client location: FLWRGATE SAGAMU → SAGAMU"
+    },
     {
       "id": "11b083c2-1b49-43f4-b676-ce81fd8dd3ba",
       "at": "2026-11-26T10:52:53.837Z",
