@@ -1565,7 +1565,7 @@
       "unit": "pcs",
       "condition": "Poor",
       "status": "In store",
-      "storeLocation": "STORE [OPEBI]",
+      "storeLocation": "OFFICE MAIN STORE [OPEBI]",
       "companyName": "",
       "clientLocation": "",
       "handedTo": "",
@@ -1579,7 +1579,7 @@
       "createdAt": "2026-11-23T20:03:19.828Z",
       "createdBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "createdByName": "Abdul-Waliyi Muhammed",
-      "updatedAt": "2026-11-26T11:04:31.869Z",
+      "updatedAt": "2026-11-26T11:04:41.815Z",
       "updatedBy": "152871a0-626e-438c-a86e-704d85fc97d2",
       "updatedByName": "Abdul-Waliyi Muhammed",
       "brand": ""
@@ -2033,7 +2033,7 @@
       "brand": ""
     }
   ],
-  "itemsRevision": 1795691071869,
+  "itemsRevision": 1795691081815,
   "catalog": {
     "brands": [
       "ARUBA",
@@ -2114,6 +2114,18 @@
   "movements": [],
   "movementsRevision": 0,
   "audit": [
+    {
+      "id": "2ffe0f5b-f141-4a50-a46d-5389beb52beb",
+      "at": "2026-11-26T11:04:41.815Z",
+      "username": "admin",
+      "userId": "152871a0-626e-438c-a86e-704d85fc97d2",
+      "userName": "Abdul-Waliyi Muhammed",
+      "action": "updated",
+      "itemId": "55ec473b-1c06-4412-8327-30e7e375182e",
+      "tag": "AST-0058",
+      "itemName": "BOSCH PST 650",
+      "details": "Abdul-Waliyi Muhammed updated BOSCH PST 650 (AST-0058). Store location: STORE [OPEBI] → OFFICE MAIN STORE [OPEBI]"
+    },
     {
       "id": "4d30b817-607b-47aa-9ca6-d7420505673b",
       "at": "2026-11-26T11:04:31.869Z",
